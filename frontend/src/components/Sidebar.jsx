@@ -14,7 +14,7 @@ import {
   XIcon,
 } from "lucide-react";
 
-const Sidebar = ({ role = "EMPLOYEE" }) => {
+const Sidebar = () => {
   const { pathname } = useLocation();
   const [userName, setUserName] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -37,13 +37,16 @@ const Sidebar = ({ role = "EMPLOYEE" }) => {
     wasMobileOpen.current = mobileOpen;
   }, [mobileOpen]);
 
+  const role = "ADMIN" || "EMPLOYEE";
+  const isAdmin = role === "ADMIN";
+
   const navItems = [
     {
       name: "Dashboard",
       href: "/dashboard",
       icon: LayoutGridIcon,
     },
-    role === "ADMIN"
+    isAdmin
       ? {
           name: "Employees",
           href: "/employees",
@@ -60,7 +63,7 @@ const Sidebar = ({ role = "EMPLOYEE" }) => {
       icon: FileTextIcon,
     },
     {
-      name: "payslips",
+      name: "Payslips",
       href: "/payslips",
       icon: IndianRupeeIcon,
     },
@@ -116,7 +119,7 @@ const Sidebar = ({ role = "EMPLOYEE" }) => {
                 {userName}
               </p>
               <p className="text-[11px] text-emerald-500">
-                {role === "ADMIN" ? "Administrator" : "Employee"}
+                {isAdmin ? "Administrator" : "Employee"}
               </p>
             </div>
           </div>
