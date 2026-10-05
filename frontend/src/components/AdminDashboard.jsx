@@ -4,7 +4,6 @@ import {
   FileTextIcon,
   UserIcon,
 } from "lucide-react";
-import React from "react";
 
 const AdminDashboard = ({ data }) => {
   const stats = [
@@ -24,7 +23,7 @@ const AdminDashboard = ({ data }) => {
       icon: CalendarIcon,
       value: data.todayAttendance,
       label: "Today's Attendance",
-      description: "Chacked in today",
+      description: "Checked in today",
     },
     {
       icon: FileTextIcon,
