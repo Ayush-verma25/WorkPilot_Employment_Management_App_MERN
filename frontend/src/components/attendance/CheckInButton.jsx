@@ -14,7 +14,11 @@ const CheckInButton = ({ todayRecord, onAction }) => {
         method: "POST",
         body: JSON.stringify({ action: isCheckedIn ? "CHECK_OUT" : "CHECK_IN" }),
       });
-      await onAction();
+      try {
+        await onAction();
+      } catch {
+        toast.error("Attendance was saved, but the history could not be refreshed.");
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Attendance update failed.");
     } finally {

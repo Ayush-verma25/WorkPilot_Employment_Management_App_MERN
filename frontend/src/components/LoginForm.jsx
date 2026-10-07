@@ -99,6 +99,7 @@ const LoginForm = ({ role, title, subtitle }) => {
 
             <button
               type="submit"
+              disabled={loading}
               className="w-full rounded-md bg-emerald-600 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 disabled:opacity-50"
             >
               {loading ? "Signing in..." : "Sign in"}

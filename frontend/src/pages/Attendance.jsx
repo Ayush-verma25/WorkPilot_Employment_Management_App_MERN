@@ -28,16 +28,15 @@ const Attendance = () => {
       const result = await apiRequest("/api/attendance");
       setHistory(result.data || []);
       setIsDeleted(Boolean(result.employee?.isDeleted));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to load attendance.");
-      throw error;
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchData().catch(() => {});
+    fetchData().catch((error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to load attendance.");
+    });
   }, [fetchData]);
 
   if (loading) return <Loading />;

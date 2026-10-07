@@ -294,3 +294,26 @@ test("current-day closed records are reused and invalid or premature check-outs 
   }
   assert.equal(await Attendance.countDocuments(), 1);
 });
+
+test("a shift just under eight hours is rounded for storage but remains a half day", async (t) => {
+  const { user, employee } = await fixture();
+  const now = new Date(2026, 9, 7, 17, 0);
+  t.mock.timers.enable({ apis: ["Date"], now });
+  try {
+    await Attendance.create({
+      employeeId: employee._id,
+      date: new Date(2026, 9, 7),
+      checkIn: new Date(now.getTime() - (8 * 60 * 60 * 1000 - 1000)),
+    });
+
+    const result = await call(clockInOut, {
+      session: { userId: user._id },
+      body: { action: "CHECK_OUT" },
+    });
+
+    assert.equal(result.body.data.workingHours, 8);
+    assert.equal(result.body.data.dayType, "Half Day");
+  } finally {
+    t.mock.timers.reset();
+  }
+});
