@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { JWT_SECRET } from "../config/auth.js";
 
 // Login for employee and admin
 // POST /api/auth/login
@@ -15,7 +16,7 @@ export const login = async (req, res) => {
     }
 
     const user = await User.findOne({ email });
-    if (!user) {
+    if (!user || user.isDisabled) {
       return res.status(401).json({ message: "Invalid credentials." });
     }
 
@@ -38,7 +39,7 @@ export const login = async (req, res) => {
       email: user.email,
     };
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+    const token = jwt.sign(payload, JWT_SECRET, {
       expiresIn: "7h",
     });
 

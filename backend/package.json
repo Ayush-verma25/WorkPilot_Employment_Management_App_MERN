@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "server": "nodemon server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +22,7 @@
     "multer": "^2.4.0"
   },
   "devDependencies": {
+    "mongodb-memory-server": "10.4.1",
     "nodemon": "^3.1.14"
   }
 }
