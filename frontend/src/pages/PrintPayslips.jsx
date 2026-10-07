@@ -1,8 +1,9 @@
-import React, { use, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { dummyPayslipData } from "../assets/assets";
 import Loading from "../components/Loading";
 import { format } from "date-fns";
+import toast from "react-hot-toast";
+import { apiRequest } from "../lib/api";
 
 const PrintPayslips = () => {
   const { id } = useParams();
@@ -10,10 +11,16 @@ const PrintPayslips = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setPayslip(dummyPayslipData.find((slip) => slip._id === id));
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
+    apiRequest(`/api/payslips/${id}`)
+      .then((result) => setPayslip({
+        ...result,
+        employee: result.employeeId,
+      }))
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : "Failed to load payslip.");
+        setPayslip(null);
+      })
+      .finally(() => setLoading(false));
   }, [id]);
 
   if (loading) return <Loading />;

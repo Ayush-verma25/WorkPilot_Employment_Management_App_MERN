@@ -1,6 +1,27 @@
 import Employee from "../models/Employee.js";
 import LeaveApplication from "../models/LeaveApplication.js";
 
+const parseDateOnly = (value) => {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value
+    ? null
+    : date;
+};
+
+const getTodayInIndia = () => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const part = (type) => parts.find((item) => item.type === type).value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
+};
+
 // Create leave application
 // Post /api/leaves
 export const createLeave = async (req, res) => {
@@ -23,15 +44,16 @@ export const createLeave = async (req, res) => {
       return res.status(400).json({ message: "Please fill all the fields." });
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (new Date(startDate) <= today || new Date(endDate) <= today) {
+    const start = parseDateOnly(startDate);
+    const end = parseDateOnly(endDate);
+    const today = getTodayInIndia();
+    if (!start || !end || startDate <= today || endDate <= today) {
       return res
         .status(400)
         .json({ message: "Start date and end date should be in the future." });
     }
 
-    if (new Date(endDate) < new Date(startDate)) {
+    if (endDate < startDate) {
       return res
         .status(400)
         .json({ message: "End date should be after start date." });
@@ -40,8 +62,8 @@ export const createLeave = async (req, res) => {
     const leave = await LeaveApplication.create({
       employeeId: employee._id,
       type,
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
+      startDate: start,
+      endDate: end,
       reason,
       status: "PENDING",
     });
@@ -111,6 +133,9 @@ export const updateLeaveStatus = async (req, res) => {
       { status },
       { returnDocument: "after" },
     );
+    if (!leave) {
+      return res.status(404).json({ error: "Leave application not found." });
+    }
     return res.json({ success: true, leave });
   } catch (error) {
     return res.status(500).json({ error: "Failed to update leave status." });

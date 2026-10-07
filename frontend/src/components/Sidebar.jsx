@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { dummyProfileData } from "../assets/assets";
+import { clearAuth, getAuthUser } from "../lib/api";
 import {
   CalendarIcon,
   ChevronRightIcon,
@@ -16,14 +16,12 @@ import {
 
 const Sidebar = () => {
   const { pathname } = useLocation();
-  const [userName, setUserName] = useState("");
+  const [user] = useState(getAuthUser);
+  const userName = user?.name || user?.email || "";
+  const role = user?.role || "EMPLOYEE";
   const [mobileOpen, setMobileOpen] = useState(false);
   const menuButtonRef = useRef(null);
   const wasMobileOpen = useRef(false);
-
-  useEffect(() => {
-    setUserName(dummyProfileData.firstName + " " + dummyProfileData.lastName);
-  }, []);
 
   // Close mobile sidebar when route changes
   useEffect(() => {
@@ -37,7 +35,6 @@ const Sidebar = () => {
     wasMobileOpen.current = mobileOpen;
   }, [mobileOpen]);
 
-  const role = "" || "EMPLOYEE";
   const isAdmin = role === "ADMIN";
 
   const navItems = [
@@ -75,6 +72,7 @@ const Sidebar = () => {
   ];
 
   const handleLogout = () => {
+    clearAuth();
     window.location.href = "/login";
   };
 

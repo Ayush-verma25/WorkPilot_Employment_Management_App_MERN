@@ -40,12 +40,22 @@ export const clockInOut = async (req, res) => {
       }
       const isLate = now.getHours() > 9 ||
         (now.getHours() === 9 && now.getMinutes() > 0);
-      const attendance = await Attendance.create({
-        employeeId: employee._id,
-        date: today,
-        checkIn: now,
-        status: isLate ? "LATE" : "PRESENT",
-      });
+      let attendance;
+      try {
+        attendance = await Attendance.create({
+          employeeId: employee._id,
+          date: today,
+          checkIn: now,
+          status: isLate ? "LATE" : "PRESENT",
+        });
+      } catch (error) {
+        if (error.code !== 11000) throw error;
+        attendance = await Attendance.findOne({
+          employeeId: employee._id,
+          date: today,
+        });
+        if (!attendance) throw error;
+      }
       return res.json({ success: true, type: "CHECK_IN", data: attendance });
     } else if (action === "CHECK_IN" || existing.checkOut) {
       return res.json({
@@ -63,9 +73,9 @@ export const clockInOut = async (req, res) => {
       // Compute working hours and day type
       const workingHours = parseFloat(diffHours.toFixed(2));
       let dayType = "Half Day";
-      if (workingHours >= 8) dayType = "Full Day";
-      else if (workingHours >= 6) dayType = "Three Quarter Day";
-      else if (workingHours >= 4) dayType = "Half Day";
+      if (diffHours >= 8) dayType = "Full Day";
+      else if (diffHours >= 6) dayType = "Three Quarter Day";
+      else if (diffHours >= 4) dayType = "Half Day";
       else dayType = "Short Day";
 
       existing.workingHours = workingHours;

@@ -1,15 +1,37 @@
 import { CalendarDays, FileText, Loader2, Send, X } from "lucide-react";
 import React, { useState } from "react";
+import toast from "react-hot-toast";
+import { apiRequest } from "../../lib/api";
 
 const ApplyLeaveModel = ({ open, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
-  const today = new Date();
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-  const minDate = tomorrow.toISOString().split("T")[0];
+  const [minDate] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+  });
 
   const handleSubmit = async (e) => {
-    (e, preventDefault());
+    e.preventDefault();
+    setLoading(true);
+    const form = new FormData(e.currentTarget);
+    const values = Object.fromEntries(form.entries());
+    try {
+      await apiRequest("/api/leave", {
+        method: "POST",
+        body: JSON.stringify(values),
+      });
+      onClose();
+      try {
+        await onSuccess();
+      } catch {
+        toast.error("Leave submitted, but the history could not be refreshed.");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to submit leave.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!open) return null;
@@ -99,7 +121,6 @@ const ApplyLeaveModel = ({ open, onClose, onSuccess }) => {
             </button>
 
             <button
-              onClick={onClose}
               disabled={loading}
               type="submit"
               className="btn-primary flex-1 flex items-center justify-center gap-2"
