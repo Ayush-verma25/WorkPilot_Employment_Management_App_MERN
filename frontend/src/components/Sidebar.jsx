@@ -142,10 +142,10 @@ const Sidebar = () => {
               className={`group flex items-center gap-3 px-3 py-2.5 rounded-md text-[13px] font-medium transition-all duration-150 relative ${isActive ? "bg-emerald-500/12 text-emerald-300" : "text-slate-300 hover:text-white hover:bg-white/4 "}`}
             >
               {isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-emerald-500" />
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.75 h-5 rounded-r-full bg-emerald-500" />
               )}
               <item.icon
-                className={`w-[17px] h-[17px] shrink-0 ${isActive ? "text-emerald-300" : "text-emerald-400 group-hover:text-emerald-300"}`}
+                className={`w-4.25 h-4.25 shrink-0 ${isActive ? "text-emerald-300" : "text-emerald-400 group-hover:text-emerald-300"}`}
               />
               <span className="flex-1">{item.name}</span>
               {isActive && (
@@ -162,7 +162,7 @@ const Sidebar = () => {
           onClick={handleLogout}
           className="flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-[13px] font-medium text-emerald-400 hover:text-rose-400 hover:bg-rose-500/8 transition-all duration-150"
         >
-          <LogOutIcon className="w-[17px] h-[17px]" />
+          <LogOutIcon className="w-4.25 h-4.25" />
           <span>Logout</span>
         </button>
       </div>
@@ -190,7 +190,7 @@ const Sidebar = () => {
       )}
 
       {/* Sidebar - desktop */}
-      <aside className="hidden lg:flex flex-col h-full w-[260px] bg-linear-to-b from-emerald-950 via-emerald-900 to-teal-950 text-white shrink-0 border-r border-emerald-900">
+      <aside className="hidden lg:flex flex-col h-full w-65 bg-linear-to-b from-emerald-950 via-emerald-900 to-teal-950 text-white shrink-0 border-r border-emerald-900">
         {sidebarContent}
       </aside>
 
