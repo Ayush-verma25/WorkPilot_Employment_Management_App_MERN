@@ -1,32 +1,48 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { dummyAttendanceData } from "../assets/assets";
 import Loading from "../components/Loading";
 import CheckInButton from "../components/attendance/CheckInButton";
 import AttendanceStats from "../components/attendance/AttendanceStats";
 import AttendanceHistory from "../components/attendance/AttendanceHistory";
+import toast from "react-hot-toast";
+import { apiRequest } from "../lib/api";
+
+const indiaDateKey = () => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const part = (type) => parts.find((item) => item.type === type).value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
+};
 
 const Attendance = () => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isDeleted, setIsDeleted] = useState(false);
+  const [todayKey] = useState(indiaDateKey);
 
   const fetchData = useCallback(async () => {
-    setHistory(dummyAttendanceData);
-    setTimeout(() => {
+    try {
+      const result = await apiRequest("/api/attendance");
+      setHistory(result.data || []);
+      setIsDeleted(Boolean(result.employee?.isDeleted));
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   }, []);
 
   useEffect(() => {
-    fetchData();
+    fetchData().catch((error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to load attendance.");
+    });
   }, [fetchData]);
 
   if (loading) return <Loading />;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayRecord = history.find(
-    (r) => new Date(r.date).toDateString() === today.toDateString(),
+  const todayRecord = history.find((record) =>
+    String(record.date).slice(0, 10) === todayKey,
   );
 
   return (

@@ -1,15 +1,29 @@
 import { Loader2Icon, LogInIcon, LogOutIcon } from "lucide-react";
 import React, { useState } from "react";
+import toast from "react-hot-toast";
+import { apiRequest } from "../../lib/api";
 
 const CheckInButton = ({ todayRecord, onAction }) => {
   const [loading, setLoading] = useState(false);
+  const isCheckedIn = !!todayRecord?.checkIn && !todayRecord?.checkOut;
 
   const handleAttendance = async () => {
     setLoading(true);
-    setTimeout(() => {
+    try {
+      await apiRequest("/api/attendance", {
+        method: "POST",
+        body: JSON.stringify({ action: isCheckedIn ? "CHECK_OUT" : "CHECK_IN" }),
+      });
+      try {
+        await onAction();
+      } catch {
+        toast.error("Attendance was saved, but the history could not be refreshed.");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Attendance update failed.");
+    } finally {
       setLoading(false);
-      onAction();
-    }, 1000);
+    }
   };
 
   if (todayRecord?.checkOut) {
@@ -22,8 +36,6 @@ const CheckInButton = ({ todayRecord, onAction }) => {
       </div>
     );
   }
-
-  const isCheckedIn = !!todayRecord?.isCheckedIn;
 
   return (
     <div className="absolute bottom-4 right-4 flex flex-col z-1">

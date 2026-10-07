@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { dummyLeaveData } from "../assets/assets";
 import Loading from "../components/Loading";
 import {
   PalmtreeIcon,
@@ -9,24 +8,39 @@ import {
 } from "lucide-react";
 import LeaveHistory from "../components/leave/LeaveHistory";
 import ApplyLeaveModel from "../components/leave/ApplyLeaveModel";
+import toast from "react-hot-toast";
+import { apiRequest, getAuthUser } from "../lib/api";
 
 const Leave = () => {
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
-  const isAdmin = false;
+  const isAdmin = getAuthUser()?.role === "ADMIN";
 
-  const fetchLeaves = useCallback(() => {
-    setLeaves(dummyLeaveData);
-    setTimeout(() => {
+  const fetchLeaves = useCallback(async () => {
+    try {
+      const result = await apiRequest("/api/leave");
+      setLeaves(result.data || []);
+      setIsDeleted(Boolean(result.employee?.isDeleted));
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   }, []);
 
   useEffect(() => {
-    fetchLeaves();
+    fetchLeaves().catch((error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to load leave history.");
+    });
   }, [fetchLeaves]);
+
+  const handleUpdate = async (id, status) => {
+    await apiRequest(`/api/leave/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+    await fetchLeaves();
+  };
 
   if (loading) return <Loading />;
 
@@ -87,7 +101,7 @@ const Leave = () => {
         </div>
       )}
 
-      <LeaveHistory leaves={leaves} isAdmin={isAdmin} onUpdate={fetchLeaves} />
+      <LeaveHistory leaves={leaves} isAdmin={isAdmin} onUpdate={handleUpdate} />
       <ApplyLeaveModel
         open={showModal}
         onClose={() => setShowModal(false)}

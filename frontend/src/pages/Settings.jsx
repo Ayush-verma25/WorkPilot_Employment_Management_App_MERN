@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { dummyProfileData } from "../assets/assets";
 import Loading from "../components/Loading";
 import { Lock } from "lucide-react";
 import ProfileForm from "../components/ProfileForm";
 import ChangePasswordModal from "../components/ChangePasswordModal";
+import toast from "react-hot-toast";
+import { apiRequest } from "../lib/api";
 
 const Settings = () => {
   const [profile, setProfile] = useState(null);
@@ -11,10 +12,13 @@ const Settings = () => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   const fetchProfile = async () => {
-    setProfile(dummyProfileData);
-    setTimeout(() => {
+    try {
+      setProfile(await apiRequest("/api/profile"));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to load profile.");
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   useEffect(() => {
@@ -30,9 +34,7 @@ const Settings = () => {
         <p className="page-subtitle">Manage your account and preferences</p>
       </div>
 
-      {profile && (
-        <ProfileForm initialData={profile} />
-      )}
+      {profile && <ProfileForm initialData={profile} />}
 
       {/* Change Password trigger */}
       <div className="card max-w-md p-6 flex items-center justify-between">

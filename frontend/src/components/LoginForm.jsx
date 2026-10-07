@@ -1,8 +1,35 @@
+import { useState } from "react";
 import LoginLeftSide from "./LoginLeftSide";
 import { Link } from "react-router-dom";
 import { ArrowLeftIcon } from "lucide-react";
+import toast from "react-hot-toast";
+import { apiRequest, saveAuth } from "../lib/api";
 
 const LoginForm = ({ role, title, subtitle }) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+    const form = new FormData(event.currentTarget);
+    try {
+      const result = await apiRequest("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({
+          email: form.get("email"),
+          password: form.get("password"),
+          role_type: role,
+        }),
+      });
+      saveAuth(result);
+      window.location.href = "/dashboard";
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to sign in.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
       <LoginLeftSide />
@@ -27,23 +54,11 @@ const LoginForm = ({ role, title, subtitle }) => {
             </p>
           </div>
 
-          <div
-            role="status"
-            className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4"
-          >
-            <p className="text-sm font-semibold text-emerald-900">
-              Sign-in unavailable
-            </p>
-            <p className="mt-1 text-sm leading-relaxed text-emerald-800">
-              Authentication has not been configured for this application yet.
-            </p>
-          </div>
-
           <form
             className="space-y-6"
-            onSubmit={(event) => event.preventDefault()}
+            onSubmit={handleSubmit}
           >
-            <fieldset disabled className="space-y-6">
+            <fieldset disabled={loading} className="space-y-6">
             <div>
               <label
                 htmlFor="login-email"
@@ -53,9 +68,11 @@ const LoginForm = ({ role, title, subtitle }) => {
               </label>
               <input
                 id="login-email"
+                name="email"
                 type="email"
                 placeholder="john@example.com"
                 autoComplete="username"
+                required
                 className="rounded-lg border-slate-200 bg-white disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
               />
             </div>
@@ -70,8 +87,10 @@ const LoginForm = ({ role, title, subtitle }) => {
               <div className="relative">
                 <input
                   id="login-password"
+                  name="password"
                   type="password"
                   autoComplete="current-password"
+                  required
                   className="rounded-lg border-slate-200 bg-white disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
                   placeholder="••••••••"
                 />
@@ -80,9 +99,10 @@ const LoginForm = ({ role, title, subtitle }) => {
 
             <button
               type="submit"
-              className="w-full rounded-md bg-emerald-600 py-3 text-sm font-semibold text-white opacity-50 shadow-lg shadow-emerald-500/25"
+              disabled={loading}
+              className="w-full rounded-md bg-emerald-600 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 disabled:opacity-50"
             >
-              Sign-in unavailable
+              {loading ? "Signing in..." : "Sign in"}
             </button>
             </fieldset>
           </form>

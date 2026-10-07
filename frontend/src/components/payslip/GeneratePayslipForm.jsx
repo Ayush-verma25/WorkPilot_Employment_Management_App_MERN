@@ -1,9 +1,12 @@
 import { Loader2, Plus, X } from "lucide-react";
 import React, { useState } from "react";
+import toast from "react-hot-toast";
+import { apiRequest } from "../../lib/api";
 
 const GeneratePayslipForm = ({ employees, onSuccess }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [currentYear] = useState(() => new Date().getFullYear());
 
   if (!isOpen)
     return (
@@ -17,6 +20,25 @@ const GeneratePayslipForm = ({ employees, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    const form = new FormData(e.currentTarget);
+    const values = Object.fromEntries(form.entries());
+    try {
+      await apiRequest("/api/payslips", {
+        method: "POST",
+        body: JSON.stringify(values),
+      });
+      setIsOpen(false);
+      try {
+        await onSuccess();
+      } catch {
+        toast.error("Payslip created, but the list could not be refreshed.");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create payslip.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -39,7 +61,7 @@ const GeneratePayslipForm = ({ employees, onSuccess }) => {
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Employee
             </label>
-            <select name="emploueeid" required>
+            <select name="employeeId" required>
               {employees.map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.firstName} {e.lastName} ({e.position})
@@ -54,7 +76,7 @@ const GeneratePayslipForm = ({ employees, onSuccess }) => {
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Month
               </label>
-              <select name="month">
+              <select name="month" required>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                   <option key={m} value={m}>
                     {m}
@@ -70,7 +92,8 @@ const GeneratePayslipForm = ({ employees, onSuccess }) => {
               <input
                 type="number"
                 name="year"
-                defaultValue={new Date().getFullYear()}
+                defaultValue={currentYear}
+                required
               />
             </div>
           </div>
@@ -85,6 +108,8 @@ const GeneratePayslipForm = ({ employees, onSuccess }) => {
               required
               name="basicSalary"
               placeholder="50000"
+              min="0"
+              step="0.01"
             />
           </div>
 
@@ -94,13 +119,25 @@ const GeneratePayslipForm = ({ employees, onSuccess }) => {
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Allowance
               </label>
-              <input type="number" name="allowance" defaultValue={0} />
+              <input
+                type="number"
+                name="allowances"
+                defaultValue={0}
+                min="0"
+                step="0.01"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Deductions
               </label>
-              <input type="number" name="deductions" defaultValue={0} />
+              <input
+                type="number"
+                name="deductions"
+                defaultValue={0}
+                min="0"
+                step="0.01"
+              />
             </div>
           </div>
 

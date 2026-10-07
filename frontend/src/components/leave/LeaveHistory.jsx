@@ -1,6 +1,5 @@
 import { Check, Loader2, X } from "lucide-react";
 import React, { useState } from "react";
-import { format } from "date-fns";
 import toast from "react-hot-toast";
 
 const LeaveHistory = ({ leaves, isAdmin, onUpdate }) => {
@@ -19,6 +18,17 @@ const LeaveHistory = ({ leaves, isAdmin, onUpdate }) => {
     } finally {
       setProcessing(null);
     }
+  };
+
+  const formatDate = (value, includeYear = false) => {
+    const dateKey = String(value).slice(0, 10);
+    const date = new Date(`${dateKey}T00:00:00.000Z`);
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: "UTC",
+      month: "short",
+      day: "2-digit",
+      ...(includeYear ? { year: "numeric" } : {}),
+    }).format(date);
   };
 
   return (
@@ -66,8 +76,8 @@ const LeaveHistory = ({ leaves, isAdmin, onUpdate }) => {
                     </td>
 
                     <td className="text-xs text-slate-500">
-                      {format(new Date(leave.startDate), "MMM dd")} -{" "}
-                      {format(new Date(leave.endDate), "MMM dd, yyyy")}
+                      {formatDate(leave.startDate)} -{" "}
+                      {formatDate(leave.endDate, true)}
                     </td>
 
                     <td

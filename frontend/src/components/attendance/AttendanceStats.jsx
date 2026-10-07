@@ -3,18 +3,32 @@ import React from "react";
 
 const AttendanceStats = ({ history }) => {
   const totalPresent = history.filter(
-    (h) => (h.status === "PRESENT") | (h.status === "LATE"),
+    (h) => h.status === "PRESENT" || h.status === "LATE",
   ).length;
   const totalLate = history.filter((h) => h.status === "LATE").length;
+  const completedShifts = history.filter(
+    (h) => Number.isFinite(h.workingHours),
+  );
 
   const stats = [
     { label: "Days Present", value: totalPresent, icon: CalendarIcon },
     { label: "Late Arrivals", value: totalLate, icon: AlertCircleIcon },
-    { label: "Avg. Work Hrs", value: "8.5 Hrs", icon: ClockIcon },
+    ...(completedShifts.length
+      ? [{
+          label: "Avg. Work Hrs",
+          value: `${(
+            completedShifts.reduce((total, h) => total + h.workingHours, 0) /
+            completedShifts.length
+          ).toFixed(2)} Hrs`,
+          icon: ClockIcon,
+        }]
+      : []),
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 mb-8">
+    <div
+      className={`grid grid-cols-1 ${stats.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-4 sm:gap-5 mb-8`}
+    >
       {stats.map((s) => (
         <div
           key={s.label}
