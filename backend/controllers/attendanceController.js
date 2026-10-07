@@ -2,9 +2,13 @@ import Attendance from "../models/Attendance.js";
 import Employee from "../models/Employee.js";
 
 // Clock in/out for employee
-// POST /api/attendance
+// POST /api/attendance with action: CHECK_IN (default) or CHECK_OUT
 export const clockInOut = async (req, res) => {
   try {
+    const action = req.body?.action ?? "CHECK_IN";
+    if (!["CHECK_IN", "CHECK_OUT"].includes(action)) {
+      return res.status(400).json({ message: "Invalid attendance action." });
+    }
     const session = req.session;
     const employee = await Employee.findOne({ userId: session.userId });
     if (!employee)
@@ -18,7 +22,12 @@ export const clockInOut = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const existing = await Attendance.findOne({
+    const openRecord = await Attendance.findOne({
+      employeeId: employee._id,
+      checkIn: { $ne: null },
+      checkOut: null,
+    });
+    const existing = openRecord ?? await Attendance.findOne({
       employeeId: employee._id,
       date: today,
     });
@@ -26,7 +35,11 @@ export const clockInOut = async (req, res) => {
     const now = new Date();
 
     if (!existing) {
-      const isLate = now.getHours() >= 9 && now.getMinutes() > 0;
+      if (action === "CHECK_OUT") {
+        return res.status(400).json({ message: "No attendance to check out." });
+      }
+      const isLate = now.getHours() > 9 ||
+        (now.getHours() === 9 && now.getMinutes() > 0);
       const attendance = await Attendance.create({
         employeeId: employee._id,
         date: today,
@@ -34,9 +47,15 @@ export const clockInOut = async (req, res) => {
         status: isLate ? "LATE" : "PRESENT",
       });
       return res.json({ success: true, type: "CHECK_IN", data: attendance });
-    } else if (!existing.checkOut) {
-      const chackInTime = new Date(existing.checkIn).getTime();
-      const diffMs = now.getTime() - chackInTime;
+    } else if (action === "CHECK_IN" || existing.checkOut) {
+      return res.json({
+        success: true,
+        type: existing.checkOut ? "CHECK_OUT" : "CHECK_IN",
+        data: existing,
+      });
+    } else {
+      const checkInTime = new Date(existing.checkIn).getTime();
+      const diffMs = now.getTime() - checkInTime;
       const diffHours = diffMs / (1000 * 60 * 60);
 
       existing.checkOut = now;
@@ -53,8 +72,6 @@ export const clockInOut = async (req, res) => {
       existing.dayType = dayType;
 
       await existing.save();
-      return res.json({ success: true, type: "CHECK_OUT", data: existing });
-    } else {
       return res.json({ success: true, type: "CHECK_OUT", data: existing });
     }
   } catch (error) {
