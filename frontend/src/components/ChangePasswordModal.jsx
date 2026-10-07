@@ -1,32 +1,74 @@
-import { Loader2, Loader2Icon, LockIcon, X } from "lucide-react";
-import React, { useState } from "react";
+import { LockIcon, X } from "lucide-react";
+import React, { useEffect, useId, useRef } from "react";
 
 const ChangePasswordModal = ({ open, onClose }) => {
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: "", text: "" });
+  const dialogRef = useRef(null);
+  const titleId = useId();
+  const currentPasswordId = useId();
+  const newPasswordId = useId();
 
-  const handleSubmit = async (e) => {
+  useEffect(() => {
+    if (!open) return;
+
+    const previousFocus = document.activeElement;
+    const dialog = dialogRef.current;
+    dialog.showModal();
+    dialog.querySelector("input").focus();
+
+    return () => {
+      dialog.close();
+      previousFocus?.focus();
+    };
+  }, [open]);
+
+  const handleSubmit = (e) => {
+    // Password updates are unavailable until an API is connected.
     e.preventDefault();
   };
 
   if (!open) return null;
 
   return (
-    <div
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-    >
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.key !== "Tab") return;
 
+        const controls = e.currentTarget.querySelectorAll(
+          "button:not(:disabled), input:not(:disabled)",
+        );
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }}
+      onClick={onClose}
+      className="fixed inset-0 m-0 h-full max-h-none w-full max-w-none bg-transparent open:flex items-center justify-center p-4 backdrop:bg-black/40 backdrop:backdrop-blur-sm"
+    >
       <div
         className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md animate-fade-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-6 pb-0">
-          <h2 className="text-lg font-medium text-slate-900 flex items-center gap-2">
+          <h2
+            id={titleId}
+            className="text-lg font-medium text-slate-900 flex items-center gap-2"
+          >
             <LockIcon className="w-5 h-5 text-slate-400" /> Change Password
           </h2>
           <button
+            type="button"
+            aria-label="Close change password dialog"
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
           >
@@ -35,27 +77,38 @@ const ChangePasswordModal = ({ open, onClose }) => {
         </div>
 
         <form className="p-6 space-y-5" onSubmit={handleSubmit}>
-          {message.text && (
-            <div
-              className={`p-3 rounded-xl text-sm flex items-center gap-3 ${message.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-rose-50 text-rose-700 border border-rose-200"}`}
-            >
-              <div
-                className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${message.type === "success" ? "bg-emerald-500" : "bg-red-500"}`}
-              />
-              {message.text}
-            </div>
-          )}
+          <p role="status" className="text-sm text-slate-500">
+            Password updates are currently unavailable.
+          </p>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label
+              htmlFor={currentPasswordId}
+              className="block text-sm font-medium text-slate-700 mb-2"
+            >
               Current Password
             </label>
-            <input type="password" name="currentPassword" required />
+            <input
+              id={currentPasswordId}
+              type="password"
+              name="currentPassword"
+              autoComplete="current-password"
+              required
+            />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label
+              htmlFor={newPasswordId}
+              className="block text-sm font-medium text-slate-700 mb-2"
+            >
               New Password
             </label>
-            <input type="password" name="newPassword" required />
+            <input
+              id={newPasswordId}
+              type="password"
+              name="newPassword"
+              autoComplete="new-password"
+              required
+            />
           </div>
 
           <div className="flex gap-3 pt-2">
@@ -69,16 +122,15 @@ const ChangePasswordModal = ({ open, onClose }) => {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled
               className="btn-primary flex-1 flex justify-center items-center gap-2"
             >
-              {loading && <Loader2Icon className="w-4 h-4 animate-spin" />}
               Update Password
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </dialog>
   );
 };
 

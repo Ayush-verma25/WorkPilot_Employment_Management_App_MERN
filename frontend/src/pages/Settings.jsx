@@ -31,7 +31,7 @@ const Settings = () => {
       </div>
 
       {profile && (
-        <ProfileForm initialData={profile} onSuccess={fetchProfile} />
+        <ProfileForm initialData={profile} />
       )}
 
       {/* Change Password trigger */}
@@ -41,7 +41,7 @@ const Settings = () => {
             <Lock className="w-5 h-5 text-slate-600" />
           </div>
           <div>
-            <p className="font-medium text-slate-900">Pasword</p>
+            <p className="font-medium text-slate-900">Password</p>
             <p className="text-sm text-slate-500">
               Update your Account password
             </p>
