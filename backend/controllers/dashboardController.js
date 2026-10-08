@@ -2,7 +2,7 @@ import { DEPARTMENTS } from "../constants/departments.js";
 import Attendance from "../models/Attendance.js";
 import Employee from "../models/Employee.js";
 import LeaveApplication from "../models/LeaveApplication.js";
-import Payslip from "../models/PaySlip.js";
+import Payslip from "../models/Payslip.js";
 
 const getIndiaDateParts = (date) => {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -24,7 +24,7 @@ const getIndiaDateParts = (date) => {
 export const getDashboard = async (req, res) => {
   try {
     const session = req.session;
-    if (session.user.role === "ADMIN") {
+    if (session.role === "ADMIN") {
       const { year, month, day } = getIndiaDateParts(new Date());
       const todayStart = new Date(`${year}-${month}-${day}T00:00:00+05:30`);
       const tomorrowStart = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
@@ -46,7 +46,7 @@ export const getDashboard = async (req, res) => {
       });
     } else {
       const employee = await Employee.findOne({
-        userId: session.user.id,
+        userId: session.userId,
       }).lean();
       if (!employee)
         return res.status(404).json({ error: "Employee not found" });

@@ -13,6 +13,7 @@ import { inngest } from "../inngest/index.js";
 import { createEmployee, updateEmployee, deleteEmployee, getEmployees } from "../controllers/employeeController.js";
 import { getProfile, updateProfile } from "../controllers/profileController.js";
 import { clockInOut } from "../controllers/attendanceController.js";
+import { getDashboard } from "../controllers/dashboardController.js";
 
 process.env.JWT_SECRET = randomBytes(32).toString("hex");
 const { login } = await import("../controllers/authController.js");
@@ -237,6 +238,25 @@ test("profiles reject deactivated employees and preserve the admin fallback", as
   assert.equal((await call(updateProfile, { session, body: { bio: "Blocked" } })).statusCode, 403);
   const admin = await call(getProfile, { session: { userId: new mongoose.Types.ObjectId(), email: "admin@example.test" } });
   assert.deepEqual(admin.body, { firstName: "Admin", lastName: "", email: "admin@example.test" });
+});
+
+test("dashboard uses the authenticated session fields and counts attendance", async () => {
+  const { user, employee } = await fixture();
+  await Attendance.create({
+    employeeId: employee._id,
+    date: new Date(),
+    checkIn: new Date(),
+  });
+
+  const admin = await call(getDashboard, { session: { role: "ADMIN" } });
+  assert.equal(admin.statusCode, 200);
+  assert.equal(admin.body.todayAttendance, 1);
+
+  const employeeDashboard = await call(getDashboard, {
+    session: { role: "EMPLOYEE", userId: user._id },
+  });
+  assert.equal(employeeDashboard.statusCode, 200);
+  assert.equal(employeeDashboard.body.currentMonthAttendance, 1);
 });
 
 test("lateness includes later whole hours but leaves 9:00 on time", async (t) => {
