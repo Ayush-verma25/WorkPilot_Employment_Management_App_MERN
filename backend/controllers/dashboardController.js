@@ -2,6 +2,7 @@ import { DEPARTMENTS } from "../constants/departments.js";
 import Attendance from "../models/Attendance.js";
 import Employee from "../models/Employee.js";
 import LeaveApplication from "../models/LeaveApplication.js";
+import Payslip from "../models/PaySlip.js";
 
 // Get deshboard for employee and admin
 // GET /api/dashboard
@@ -49,7 +50,7 @@ export const getDashboard = async (req, res) => {
             employeeId: employee._id,
             status: "PENDING",
           }),
-          PaySlip.findOne({ employeeId: employee._id })
+          Payslip.findOne({ employeeId: employee._id })
             .sort({ createdAt: -1 })
             .lean(),
         ]);
