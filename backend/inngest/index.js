@@ -27,20 +27,24 @@ const autoCheckout = inngest.createFunction(
       new Date(new Date().getTime() + 9 * 60 * 60 * 1000),
     );
 
-    const attendance = await step.run("get-attendance-before-reminder", async () => {
-      const record = await Attendance.findById(attendanceId).lean();
-      return record
-        ? {
-            checkIn: record.checkIn?.toISOString() ?? null,
-            checkOut: record.checkOut?.toISOString() ?? null,
-          }
-        : null;
-    });
+    const attendance = await step.run(
+      "get-attendance-before-reminder",
+      async () => {
+        const record = await Attendance.findById(attendanceId).lean();
+        return record
+          ? {
+              checkIn: record.checkIn?.toISOString() ?? null,
+              checkOut: record.checkOut?.toISOString() ?? null,
+            }
+          : null;
+      },
+    );
 
     if (!attendance?.checkOut) {
       const employee = await step.run("get-employee-for-reminder", async () => {
         const record = await Employee.findById(employeeId).lean();
-        if (!record) throw new Error("Employee not found for attendance reminder.");
+        if (!record)
+          throw new Error("Employee not found for attendance reminder.");
         return {
           email: record.email,
           firstName: record.firstName,
@@ -107,7 +111,8 @@ const leaveApplicationReminder = inngest.createFunction(
       new Date(new Date().getTime() + 24 * 60 * 60 * 1000),
     );
 
-    const leaveApplication = await LeaveApplication.findById(leaveApplicationId);
+    const leaveApplication =
+      await LeaveApplication.findById(leaveApplicationId);
     if (leaveApplication?.status === "PENDING") {
       const employee = await Employee.findById(leaveApplication.employeeId);
 
@@ -137,7 +142,7 @@ const attendanceReminderCron = inngest.createFunction(
     id: "attendance-reminder-cron",
     triggers: [
       {
-        cron: "0 0 6 * * *",
+        cron: "TZ=Asia/Kolkata 30 11 * * *",
       },
     ],
   },
