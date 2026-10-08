@@ -1,3 +1,4 @@
+import { inngest } from "../inngest/index.js";
 import Attendance from "../models/Attendance.js";
 import Employee from "../models/Employee.js";
 
@@ -27,10 +28,12 @@ export const clockInOut = async (req, res) => {
       checkIn: { $ne: null },
       checkOut: null,
     });
-    const existing = openRecord ?? await Attendance.findOne({
-      employeeId: employee._id,
-      date: today,
-    });
+    const existing =
+      openRecord ??
+      (await Attendance.findOne({
+        employeeId: employee._id,
+        date: today,
+      }));
 
     const now = new Date();
 
@@ -38,8 +41,8 @@ export const clockInOut = async (req, res) => {
       if (action === "CHECK_OUT") {
         return res.status(400).json({ message: "No attendance to check out." });
       }
-      const isLate = now.getHours() > 9 ||
-        (now.getHours() === 9 && now.getMinutes() > 0);
+      const isLate =
+        now.getHours() > 9 || (now.getHours() === 9 && now.getMinutes() > 0);
       let attendance;
       try {
         attendance = await Attendance.create({
@@ -47,6 +50,14 @@ export const clockInOut = async (req, res) => {
           date: today,
           checkIn: now,
           status: isLate ? "LATE" : "PRESENT",
+        });
+
+        await inngest.send({
+          name: "employee/check-out",
+          data: {
+            employeeId: employee._id,
+            attendanceId: attendance._id,
+          },
         });
       } catch (error) {
         if (error.code !== 11000) throw error;

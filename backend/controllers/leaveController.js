@@ -1,3 +1,4 @@
+import { inngest } from "../inngest/index.js";
 import Employee from "../models/Employee.js";
 import LeaveApplication from "../models/LeaveApplication.js";
 
@@ -6,7 +7,8 @@ const parseDateOnly = (value) => {
     return null;
   }
   const date = new Date(`${value}T00:00:00.000Z`);
-  return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value
+  return Number.isNaN(date.getTime()) ||
+    date.toISOString().slice(0, 10) !== value
     ? null
     : date;
 };
@@ -66,6 +68,11 @@ export const createLeave = async (req, res) => {
       endDate: end,
       reason,
       status: "PENDING",
+    });
+
+    await inngest.send({
+      name: "leave/pending",
+      data: { leaveApplicationId: leave._id },
     });
 
     return res.json({ success: true, date: leave });
