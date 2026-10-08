@@ -13,6 +13,23 @@ in one transaction.
 Install dependencies with `corepack yarn install --frozen-lockfile`, then start
 with `corepack yarn start`.
 
+## Vercel deployment
+
+Set the Vercel project root directory to `backend`. The Express app is exported
+as the serverless handler; do not configure a custom start command that runs
+`app.listen()`.
+
+Add `MONGODB_URI` and a non-empty `JWT_SECRET` to the Vercel project's
+Environment Variables for each deployment environment. The MongoDB database
+must allow connections from Vercel and support transactions. Configure
+`INNGEST_EVENT_KEY` for event sending, plus `INNGEST_SIGNING_KEY` when syncing
+the Inngest endpoint. Email reminders also require `SMTP_USER`, `SMTP_PASS`,
+`SENDER_EMAIL`, and `ADMIN_EMAIL`.
+
+After deployment, check the Vercel Function Logs for the invocation stack if a
+function still fails. The API returns `503 Database unavailable` if it cannot
+establish a MongoDB connection.
+
 ## Attendance actions
 
 `POST /api/attendance` accepts `{ "action": "CHECK_IN" }` or

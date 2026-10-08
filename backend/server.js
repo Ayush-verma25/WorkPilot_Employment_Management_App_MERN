@@ -21,6 +21,15 @@ const PORT = process.env.PORT || 7000;
 app.use(cors());
 app.use(express.json());
 app.use(multer().none());
+app.use("/api", async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    console.error("API database connection failed:", error.message);
+    res.status(503).json({ message: "Database unavailable." });
+  }
+});
 
 // Routes
 app.get("/", (req, res) => res.send("Server is up and running"));
@@ -35,7 +44,17 @@ app.use("/api/dashboard", dashboardRoutes);
 // Inngest
 app.use("/api/inngest", serve({ client: inngest, functions }));
 
-await connectDB();
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+if (!process.env.VERCEL) {
+ connectDB()
+   .then(() => {
+     app.listen(PORT, () => {
+       console.log(`Server is running on port ${PORT}`);
+     });
+   })
+   .catch((error) => {
+     console.error("Server startup failed:", error.message);
+     process.exitCode = 1;
+   });
+}
+
+export default app;
