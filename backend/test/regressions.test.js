@@ -9,6 +9,7 @@ import { MongoMemoryReplSet } from "mongodb-memory-server";
 import User from "../models/User.js";
 import Employee from "../models/Employee.js";
 import Attendance from "../models/Attendance.js";
+import { inngest } from "../inngest/index.js";
 import { createEmployee, updateEmployee, deleteEmployee, getEmployees } from "../controllers/employeeController.js";
 import { getProfile, updateProfile } from "../controllers/profileController.js";
 import { clockInOut } from "../controllers/attendanceController.js";
@@ -240,13 +241,16 @@ test("profiles reject deactivated employees and preserve the admin fallback", as
 
 test("lateness includes later whole hours but leaves 9:00 on time", async (t) => {
   const { user } = await fixture();
+  t.mock.method(inngest, "send", async () => {});
   for (const [hour, minute, status] of [[8, 59, "PRESENT"], [9, 0, "PRESENT"], [9, 1, "LATE"], [10, 0, "LATE"], [12, 0, "LATE"]]) {
     await Attendance.deleteMany({});
-    t.mock.timers.enable({ apis: ["Date"], now: new Date(2026, 9, 7, hour, minute) });
+    const istTime = `2026-10-07T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00+05:30`;
+    t.mock.timers.enable({ apis: ["Date"], now: new Date(istTime) });
     try {
       const res = await call(clockInOut, { session: { userId: user._id } });
       assert.equal(res.statusCode, 200);
       assert.equal(res.body.data.status, status, `${hour}:${minute}`);
+      assert.equal(res.body.data.date.toISOString(), "2026-10-06T18:30:00.000Z");
     } finally {
       t.mock.timers.reset();
     }
@@ -279,7 +283,8 @@ test("duplicate check-ins reuse an overnight open shift; only explicit check-out
   assert.equal(await Attendance.countDocuments(), 2);
 });
 
-test("current-day closed records are reused and invalid or premature check-outs do not create records", async () => {
+test("current-day closed records are reused and invalid or premature check-outs do not create records", async (t) => {
+  t.mock.method(inngest, "send", async () => {});
   const { user } = await fixture();
   const req = { session: { userId: user._id } };
   assert.equal((await call(clockInOut, { ...req, body: { action: "UNKNOWN" } })).statusCode, 400);

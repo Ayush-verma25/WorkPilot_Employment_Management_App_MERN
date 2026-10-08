@@ -6,13 +6,13 @@ import AttendanceHistory from "../components/attendance/AttendanceHistory";
 import toast from "react-hot-toast";
 import { apiRequest } from "../lib/api";
 
-const indiaDateKey = () => {
+const indiaDateKey = (date = new Date()) => {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Kolkata",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).formatToParts(new Date());
+  }).formatToParts(date);
   const part = (type) => parts.find((item) => item.type === type).value;
   return `${part("year")}-${part("month")}-${part("day")}`;
 };
@@ -41,9 +41,11 @@ const Attendance = () => {
 
   if (loading) return <Loading />;
 
-  const todayRecord = history.find((record) =>
-    String(record.date).slice(0, 10) === todayKey,
-  );
+  const todayRecord =
+    history.find((record) => record.checkIn && !record.checkOut) ??
+    history.find(
+      (record) => indiaDateKey(new Date(record.date)) === todayKey,
+    );
 
   return (
     <div className="animate-fade-in">

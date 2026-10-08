@@ -27,28 +27,44 @@ const autoCheckout = inngest.createFunction(
       new Date(new Date().getTime() + 9 * 60 * 60 * 1000),
     );
 
-    // get Attendance data
-    let attendance = await Attendance.findById(attendanceId);
+    const attendance = await step.run("get-attendance-before-reminder", async () => {
+      const record = await Attendance.findById(attendanceId).lean();
+      return record
+        ? {
+            checkIn: record.checkIn?.toISOString() ?? null,
+            checkOut: record.checkOut?.toISOString() ?? null,
+          }
+        : null;
+    });
 
     if (!attendance?.checkOut) {
-      // get employee data
-      const employee = await Employee.findById(employeeId);
+      const employee = await step.run("get-employee-for-reminder", async () => {
+        const record = await Employee.findById(employeeId).lean();
+        if (!record) throw new Error("Employee not found for attendance reminder.");
+        return {
+          email: record.email,
+          firstName: record.firstName,
+          department: record.department,
+        };
+      });
 
       // Send reminder email
-      await sendEmail({
-        to: employee.email,
-        subject: "Attendance Check-out Reminder",
-        body: `<div style="max-width: 600px;">
-        <h2>Hi ${employee.firatName}, 👋</h2>
-        <p style="font-size: 16px;">You have a check-in in ${employee.department} todat:</p>
-        <p style="font-size: 18px; font-weight:bold; color:#007bff; margin: 8px 0;">${attendance?.checkIn?.toLocaleTimeString()}</p>
+      await step.run("send-checkout-reminder", () =>
+        sendEmail({
+          to: employee.email,
+          subject: "Attendance Check-out Reminder",
+          body: `<div style="max-width: 600px;">
+        <h2>Hi ${employee.firstName}, 👋</h2>
+        <p style="font-size: 16px;">You have a check-in in ${employee.department} today:</p>
+        <p style="font-size: 18px; font-weight:bold; color:#007bff; margin: 8px 0;">${new Date(attendance.checkIn).toLocaleTimeString()}</p>
         <p style="font-size: 16px;">Please make sure to check-out in one hour.</p>
         <p stype="font-size: 16px;">If you have any questions, please contect your admin.</p>
         <br />
         <p style="font-size: 16px;">Best Regards,</p>
         <p style="font-size: 16px;">WorkPilot Employee Management System</p>
         </div>`,
-      });
+        }),
+      );
 
       // After 10 hours, mark attendance as checked out with status "LATE"
       await step.sleepUntil(
@@ -56,15 +72,17 @@ const autoCheckout = inngest.createFunction(
         new Date(new Date().getTime() + 1 * 60 * 60 * 1000),
       );
 
-      attendance = await Attendance.findById(attendanceId);
-      if (!attendance?.checkOut) {
-        attendance.checkOut =
-          new Date(attendance.checkIn).getTime() + 4 * 60 * 60 * 1000;
-        attendance.workingHours = 4;
-        attendance.dayType = "Half Day";
-        attendance.status = "LATE";
-        await attendance.save();
-      }
+      await step.run("auto-checkout-attendance", async () => {
+        const record = await Attendance.findById(attendanceId);
+        if (record && !record.checkOut) {
+          record.checkOut =
+            new Date(record.checkIn).getTime() + 4 * 60 * 60 * 1000;
+          record.workingHours = 4;
+          record.dayType = "Half Day";
+          record.status = "LATE";
+          await record.save();
+        }
+      });
     }
   },
 );
@@ -89,8 +107,7 @@ const leaveApplicationReminder = inngest.createFunction(
       new Date(new Date().getTime() + 24 * 60 * 60 * 1000),
     );
 
-    const leaveApplication =
-      await LeaveApplication.findById(leaveApplicationId);
+    const leaveApplication = await LeaveApplication.findById(leaveApplicationId);
     if (leaveApplication?.status === "PENDING") {
       const employee = await Employee.findById(leaveApplication.employeeId);
 
@@ -100,7 +117,7 @@ const leaveApplicationReminder = inngest.createFunction(
         to: process.env.ADMIN_EMAIL,
         subject: "Leave Application Reminder",
         body: `<div style="max-width: 600px;">
-        <h2>Hi ${employee.firatName}, 👋</h2>
+        <h2>Hi ${employee.firstName}, 👋</h2>
         <p style="font-size: 16px;">You have a pending leave application in ${employee.department} todat:</p>
         <p style="font-size: 18px; font-weight:bold; color:#007bff; margin: 8px 0;">${leaveApplication?.startDate?.toLocaleDateString()}</p>
         <p style="font-size: 16px;">Please take action on this leave application.</p>
@@ -145,7 +162,7 @@ const attendanceReminderCron = inngest.createFunction(
       }).lean();
       return employees.map((e) => ({
         _id: e._id.toString(),
-        firatName: e.firstName,
+        firstName: e.firstName,
         lastName: e.lastName,
         email: e.email,
         department: e.department,
@@ -166,7 +183,7 @@ const attendanceReminderCron = inngest.createFunction(
     const checkedInIds = await step.run("get-checked-in-ids", async () => {
       const attendances = await Attendance.find({
         date: { $gte: new Date(today.startUTC), $lte: new Date(today.endUTC) },
-      }).lean;
+      }).lean();
       return attendances.map((a) => a.employeeId.toString());
     });
 
@@ -180,11 +197,11 @@ const attendanceReminderCron = inngest.createFunction(
       await step.run("send-reminder-emails", async () => {
         const emailPromises = absentEmployees.map((emp) => {
           //send email
-          sendEmail({
+          return sendEmail({
             to: emp.email,
             subject: `Attendance Reminder - Please Mark Your Attendance`,
             body: `<div style="max-width: 600px; font-family: Arial, sans-serif;">
-            <h2>Hi ${emp.firatName}, 👋</h2>
+            <h2>Hi ${emp.firstName}, 👋</h2>
             <p style="font-size: 16px;">We noticed that you have not marked your attendance for the day.</p>
             <p style="font-size: 16px;">The deadline was <strong>11:30 AM</strong> and your attendance is still missing.</p>
             <p style="font-size: 16px;">Please check in as soon as possible or contact your admin if you're facing any issues.</p>
@@ -197,6 +214,7 @@ const attendanceReminderCron = inngest.createFunction(
             `,
           });
         });
+        await Promise.all(emailPromises);
       });
     }
 

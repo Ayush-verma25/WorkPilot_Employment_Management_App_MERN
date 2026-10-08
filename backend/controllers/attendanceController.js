@@ -2,6 +2,30 @@ import { inngest } from "../inngest/index.js";
 import Attendance from "../models/Attendance.js";
 import Employee from "../models/Employee.js";
 
+const getIndiaDateParts = (date) => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const part = (type) => parts.find((item) => item.type === type).value;
+  return {
+    dateKey: `${part("year")}-${part("month")}-${part("day")}`,
+  };
+};
+
+const getIndiaTime = (date) => {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const part = (type) => Number(parts.find((item) => item.type === type).value);
+  return { hour: part("hour"), minute: part("minute") };
+};
+
 // Clock in/out for employee
 // POST /api/attendance with action: CHECK_IN (default) or CHECK_OUT
 export const clockInOut = async (req, res) => {
@@ -20,8 +44,9 @@ export const clockInOut = async (req, res) => {
         error: "Your account is deactivated. you can't clock in/out.",
       });
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const { dateKey } = getIndiaDateParts(now);
+    const today = new Date(`${dateKey}T00:00:00+05:30`);
 
     const openRecord = await Attendance.findOne({
       employeeId: employee._id,
@@ -35,14 +60,12 @@ export const clockInOut = async (req, res) => {
         date: today,
       }));
 
-    const now = new Date();
-
     if (!existing) {
       if (action === "CHECK_OUT") {
         return res.status(400).json({ message: "No attendance to check out." });
       }
-      const isLate =
-        now.getHours() > 9 || (now.getHours() === 9 && now.getMinutes() > 0);
+      const { hour, minute } = getIndiaTime(now);
+      const isLate = hour > 9 || (hour === 9 && minute > 0);
       let attendance;
       try {
         attendance = await Attendance.create({

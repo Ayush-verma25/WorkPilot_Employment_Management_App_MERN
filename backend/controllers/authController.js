@@ -20,17 +20,17 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials." });
     }
 
+    const isValid = await bcrypt.compare(password, user.password);
+    if (!isValid) {
+      return res.status(401).json({ message: "Invalid credentials." });
+    }
+
     if (role_type === "admin" && user.role !== "ADMIN") {
       return res.status(401).json({ message: "Not authorized as admin." });
     }
 
     if (role_type === "employee" && user.role !== "EMPLOYEE") {
       return res.status(401).json({ message: "Not authorized as employee." });
-    }
-
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) {
-      return res.status(401).json({ message: "Invalid credentials." });
     }
 
     const payload = {

@@ -1,7 +1,10 @@
 import { LockIcon, X } from "lucide-react";
-import React, { useEffect, useId, useRef } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
+import toast from "react-hot-toast";
+import { apiRequest } from "../lib/api";
 
 const ChangePasswordModal = ({ open, onClose }) => {
+  const [loading, setLoading] = useState(false);
   const dialogRef = useRef(null);
   const titleId = useId();
   const currentPasswordId = useId();
@@ -21,9 +24,25 @@ const ChangePasswordModal = ({ open, onClose }) => {
     };
   }, [open]);
 
-  const handleSubmit = (e) => {
-    // Password updates are unavailable until an API is connected.
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    setLoading(true);
+    try {
+      await apiRequest("/api/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify({
+          currentPassword: form.get("currentPassword"),
+          newPassword: form.get("newPassword"),
+        }),
+      });
+      toast.success("Password updated successfully.");
+      onClose();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update password.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!open) return null;
@@ -77,9 +96,6 @@ const ChangePasswordModal = ({ open, onClose }) => {
         </div>
 
         <form className="p-6 space-y-5" onSubmit={handleSubmit}>
-          <p role="status" className="text-sm text-slate-500">
-            Password updates are currently unavailable.
-          </p>
           <div>
             <label
               htmlFor={currentPasswordId}
@@ -122,7 +138,7 @@ const ChangePasswordModal = ({ open, onClose }) => {
 
             <button
               type="submit"
-              disabled
+              disabled={loading}
               className="btn-primary flex-1 flex justify-center items-center gap-2"
             >
               Update Password

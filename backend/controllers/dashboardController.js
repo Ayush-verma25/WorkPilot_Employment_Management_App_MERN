@@ -4,20 +4,35 @@ import Employee from "../models/Employee.js";
 import LeaveApplication from "../models/LeaveApplication.js";
 import Payslip from "../models/PaySlip.js";
 
+const getIndiaDateParts = (date) => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const part = (type) => parts.find((item) => item.type === type).value;
+  return {
+    year: part("year"),
+    month: part("month"),
+    day: part("day"),
+  };
+};
+
 // Get deshboard for employee and admin
 // GET /api/dashboard
 export const getDashboard = async (req, res) => {
   try {
     const session = req.session;
     if (session.user.role === "ADMIN") {
-      const [totalEmployees, totalAttendance, pendingLeaves] =
+      const { year, month, day } = getIndiaDateParts(new Date());
+      const todayStart = new Date(`${year}-${month}-${day}T00:00:00+05:30`);
+      const tomorrowStart = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+      const [totalEmployees, todayAttendance, pendingLeaves] =
         await Promise.all([
           Employee.countDocuments({ isDeleted: { $ne: true } }),
           Attendance.countDocuments({
-            date: {
-              $gte: new Date(new Date().setHours(0, 0, 0, 0)),
-              $lt: new Date(new Date().setHours(24, 0, 0, 0)),
-            },
+            date: { $gte: todayStart, $lt: tomorrowStart },
           }),
           LeaveApplication.countDocuments({ status: "PENDING" }),
         ]);
@@ -36,15 +51,16 @@ export const getDashboard = async (req, res) => {
       if (!employee)
         return res.status(404).json({ error: "Employee not found" });
 
-      const today = new Date();
+      const { year, month } = getIndiaDateParts(new Date());
+      const monthStart = new Date(`${year}-${month}-01T00:00:00+05:30`);
+      const monthEnd = new Date(
+        Date.UTC(Number(year), Number(month), 1) - 330 * 60 * 1000,
+      );
       const [currentMonthAttendance, pendingLeaves, latestPayslip] =
         await Promise.all([
           Attendance.countDocuments({
             employeeId: employee._id,
-            date: {
-              $gte: new Date(today.getFullYear(), today.getMonth(), 1),
-              $lt: new Date(today.getFullYear(), today.getMonth() + 1, 1),
-            },
+            date: { $gte: monthStart, $lt: monthEnd },
           }),
           LeaveApplication.countDocuments({
             employeeId: employee._id,

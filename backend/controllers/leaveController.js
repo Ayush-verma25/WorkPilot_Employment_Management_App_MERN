@@ -75,7 +75,7 @@ export const createLeave = async (req, res) => {
       data: { leaveApplicationId: leave._id },
     });
 
-    return res.json({ success: true, date: leave });
+    return res.json({ success: true, data: leave });
   } catch (error) {
     return res
       .status(500)
