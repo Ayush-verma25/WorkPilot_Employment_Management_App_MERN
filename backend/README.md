@@ -26,6 +26,19 @@ must allow connections from Vercel and support transactions. Configure
 the Inngest endpoint. Email reminders also require `SMTP_USER`, `SMTP_PASS`,
 `SENDER_EMAIL`, and `ADMIN_EMAIL`.
 
+The Inngest sync URL is `https://<your-backend-domain>/api/inngest`. It must be
+publicly reachable by Inngest: disable Vercel Deployment Protection for the
+production deployment or configure an Inngest-compatible protection bypass.
+Set `INNGEST_SIGNING_KEY` in Vercel to the signing key for the same Inngest
+environment (Production or Development) selected in the Inngest dashboard, then
+redeploy after changing environment variables. Do not use the event key as the
+signing key.
+
+If Inngest reports `Unauthorized response from URL`, check Vercel Function Logs
+and query the deployed `/api/inngest` URL. A Vercel protection page or a `401`
+from the Inngest handler indicates access protection or a missing/mismatched
+signing key; a `503` indicates the database connection instead.
+
 After deployment, check the Vercel Function Logs for the invocation stack if a
 function still fails. The API returns `503 Database unavailable` if it cannot
 establish a MongoDB connection.

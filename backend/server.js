@@ -21,6 +21,7 @@ const PORT = process.env.PORT || 7000;
 app.use(cors());
 app.use(express.json());
 app.use(multer().none());
+app.use("/api/inngest", serve({ client: inngest, functions }));
 app.use("/api", async (req, res, next) => {
   try {
     await connectDB();
@@ -40,9 +41,6 @@ app.use("/api/attendance", attendanceRoutes);
 app.use("/api/leave", leaveRoutes);
 app.use("/api/payslips", payslipsRoutes);
 app.use("/api/dashboard", dashboardRoutes);
-
-// Inngest
-app.use("/api/inngest", serve({ client: inngest, functions }));
 
 if (!process.env.VERCEL) {
  connectDB()
