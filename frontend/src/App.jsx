@@ -11,8 +11,12 @@ import Payslips from "./pages/Payslips";
 import Settings from "./pages/Settings";
 import PrintPayslips from "./pages/PrintPayslips";
 import LoginForm from "./components/LoginForm";
+import { getAuthUser } from "./lib/api";
 
 const App = () => {
+  const requireAuth = (element) =>
+    getAuthUser() ? element : <Navigate to="/login" replace />;
+
   return (
     <>
       <Toaster />
@@ -40,7 +44,7 @@ const App = () => {
           }
         />
 
-        <Route element={<Layout />}>
+        <Route element={requireAuth(<Layout />)}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/employees" element={<Employees />} />
           <Route path="/attendance" element={<Attendance />} />
@@ -48,7 +52,10 @@ const App = () => {
           <Route path="/payslips" element={<Payslips />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
-        <Route path="/print/payslips/:id" element={<PrintPayslips />} />
+        <Route
+          path="/print/payslips/:id"
+          element={requireAuth(<PrintPayslips />)}
+        />
 
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

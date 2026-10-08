@@ -5,6 +5,6 @@ import { getProfile, updateProfile } from "../controllers/profileController.js";
 const profileRoutes = Router();
 
 profileRoutes.get("/", protect, getProfile);
-profileRoutes.post("/", protect, updateProfile);
+profileRoutes.put("/", protect, updateProfile);
 
 export default profileRoutes;

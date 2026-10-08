@@ -62,6 +62,11 @@ export const createPayslip = async (req, res) => {
 
     return res.json({ success: true, data: payslip });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({
+        message: "A payslip already exists for this employee and period.",
+      });
+    }
     return res.status(500).json({ message: "Failed to create payslip." });
   }
 };

@@ -70,6 +70,9 @@ export const getEmployees = async (req, res) => {
 // POST /api/employees
 export const createEmployee = async (req, res) => {
   try {
+    if (typeof req.body.password !== "string" || !req.body.password.trim()) {
+      return res.status(400).json({ message: "A non-empty password is required." });
+    }
     validateInput(req.body);
     const user = new User({
       email: req.body.email,

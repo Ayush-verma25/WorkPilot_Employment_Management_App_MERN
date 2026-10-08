@@ -13,9 +13,20 @@ export const apiRequest = async (path, options = {}) => {
 
   const response = await fetch(`${API_URL}${path}`, { ...options, headers });
   const text = await response.text();
-  const result = text ? JSON.parse(text) : null;
+  let result = null;
+  if (text) {
+    try {
+      result = JSON.parse(text);
+    } catch {
+      result = null;
+    }
+  }
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearAuth();
+      window.location.assign("/login");
+    }
     throw new Error(
       result?.message || result?.error || `Request failed (${response.status})`,
     );

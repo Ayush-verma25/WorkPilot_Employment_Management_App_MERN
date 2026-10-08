@@ -12,6 +12,9 @@ const EmployeeForm = ({ initialData, onSuccess, onCancel }) => {
     setLoading(true);
     try {
       const formData = Object.fromEntries(new FormData(e.currentTarget).entries());
+      if (isEditMode && !String(formData.password || "").trim()) {
+        delete formData.password;
+      }
       await onSuccess(formData);
     } finally {
       setLoading(false);
@@ -32,7 +35,7 @@ const EmployeeForm = ({ initialData, onSuccess, onCancel }) => {
           <div>
             <label className="block mb-2">First Name</label>
             <input
-              name="FirstName"
+              name="firstName"
               required
               defaultValue={initialData?.firstName}
             />
@@ -40,14 +43,14 @@ const EmployeeForm = ({ initialData, onSuccess, onCancel }) => {
           <div>
             <label className="block mb-2">Last Name</label>
             <input
-              name="LastName"
+              name="lastName"
               required
               defaultValue={initialData?.lastName}
             />
           </div>
           <div>
             <label className="block mb-2">Phone Number</label>
-            <input name="Phone" required defaultValue={initialData?.phone} />
+            <input name="phone" required defaultValue={initialData?.phone} />
           </div>
           <div>
             <label className="block mb-2">Join Date</label>
