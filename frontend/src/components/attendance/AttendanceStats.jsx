@@ -7,28 +7,26 @@ const AttendanceStats = ({ history }) => {
   ).length;
   const totalLate = history.filter((h) => h.status === "LATE").length;
   const completedShifts = history.filter(
-    (h) => Number.isFinite(h.workingHours),
+    (h) =>
+      h.workingHours != null && Number.isFinite(Number(h.workingHours)),
   );
+  const averageWorkHours = completedShifts.length
+    ? `${(
+        completedShifts.reduce(
+          (total, shift) => total + Number(shift.workingHours),
+          0,
+        ) / completedShifts.length
+      ).toFixed(2)} Hrs`
+    : "N/A";
 
   const stats = [
     { label: "Days Present", value: totalPresent, icon: CalendarIcon },
     { label: "Late Arrivals", value: totalLate, icon: AlertCircleIcon },
-    ...(completedShifts.length
-      ? [{
-          label: "Avg. Work Hrs",
-          value: `${(
-            completedShifts.reduce((total, h) => total + h.workingHours, 0) /
-            completedShifts.length
-          ).toFixed(2)} Hrs`,
-          icon: ClockIcon,
-        }]
-      : []),
+    { label: "Avg. Work Hrs", value: averageWorkHours, icon: ClockIcon },
   ];
 
   return (
-    <div
-      className={`grid grid-cols-1 ${stats.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-4 sm:gap-5 mb-8`}
-    >
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 mb-8">
       {stats.map((s) => (
         <div
           key={s.label}

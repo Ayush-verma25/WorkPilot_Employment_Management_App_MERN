@@ -1,7 +1,7 @@
 import { Loader2, Plus, X } from "lucide-react";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
-import { apiRequest } from "../../lib/api";
+import api from "../../api/axios";
 
 const GeneratePayslipForm = ({ employees, onSuccess }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,21 +21,19 @@ const GeneratePayslipForm = ({ employees, onSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const form = new FormData(e.currentTarget);
-    const values = Object.fromEntries(form.entries());
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries());
     try {
-      await apiRequest("/api/payslips", {
-        method: "POST",
-        body: JSON.stringify(values),
-      });
+      await api.post("/payslips", data);
       setIsOpen(false);
-      try {
-        await onSuccess();
-      } catch {
-        toast.error("Payslip created, but the list could not be refreshed.");
-      }
+      onSuccess();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to create payslip.");
+      toast.error(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          "Failed to generate payslip.",
+      );
     } finally {
       setLoading(false);
     }

@@ -4,26 +4,45 @@ import { Lock } from "lucide-react";
 import ProfileForm from "../components/ProfileForm";
 import ChangePasswordModal from "../components/ChangePasswordModal";
 import toast from "react-hot-toast";
-import { apiRequest } from "../lib/api";
+import { useAuth } from "../context/AuthContext";
+import api from "../api/axios";
 
 const Settings = () => {
+  const { user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
-  const fetchProfile = async () => {
-    try {
-      setProfile(await apiRequest("/api/profile"));
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to load profile.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
+    const controller = new AbortController();
+
+    const fetchProfile = async () => {
+      setLoading(true);
+      setProfile(null);
+      try {
+        const { data } = await api.get("/profile", {
+          signal: controller.signal,
+        });
+        if (!data || typeof data !== "object") {
+          throw new Error("The server returned invalid profile data.");
+        }
+        setProfile(data);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        toast.error(
+          error.response?.data?.message ||
+            error.response?.data?.error ||
+            error.message ||
+            "Failed to load profile.",
+        );
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    };
+
     fetchProfile();
-  }, []);
+    return () => controller.abort();
+  }, [user?.userId]);
 
   if (loading) return <Loading />;
 

@@ -6,6 +6,10 @@ Set `MONGODB_URI` and a non-empty `JWT_SECRET` in the environment or a backend
 `.env` file. Startup fails if `JWT_SECRET` is missing or blank. `PORT` defaults
 to `7000`.
 
+To create the initial administrator with `corepack yarn seed`, also set
+`ADMIN_EMAIL` and a private `ADMIN_PASSWORD` in the environment. The seed script
+does not provide or print a default password.
+
 MongoDB must support transactions (a replica set or sharded cluster). Employee
 creation, updates, and deactivation commit the linked User and Employee changes
 in one transaction.
@@ -37,7 +41,10 @@ signing key.
 If Inngest reports `Unauthorized response from URL`, check Vercel Function Logs
 and query the deployed `/api/inngest` URL. A Vercel protection page or a `401`
 from the Inngest handler indicates access protection or a missing/mismatched
-signing key; a `503` indicates the database connection instead.
+signing key; a `503` indicates the database connection instead. A plain,
+unsigned browser or `curl` GET may itself return `401` in cloud mode because
+Inngest requests are signature-verified; use the Inngest sync action and its
+request logs to diagnose production connectivity.
 
 After deployment, check the Vercel Function Logs for the invocation stack if a
 function still fails. The API returns `503 Database unavailable` if it cannot

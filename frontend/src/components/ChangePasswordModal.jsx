@@ -1,11 +1,13 @@
-import { LockIcon, X } from "lucide-react";
+import { Loader2Icon, LockIcon, X } from "lucide-react";
 import React, { useEffect, useId, useRef, useState } from "react";
 import toast from "react-hot-toast";
-import { apiRequest } from "../lib/api";
+import api from "../api/axios";
 
 const ChangePasswordModal = ({ open, onClose }) => {
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState({ type: "", text: "" });
   const dialogRef = useRef(null);
+  const formRef = useRef(null);
   const titleId = useId();
   const currentPasswordId = useId();
   const newPasswordId = useId();
@@ -15,31 +17,48 @@ const ChangePasswordModal = ({ open, onClose }) => {
 
     const previousFocus = document.activeElement;
     const dialog = dialogRef.current;
-    dialog.showModal();
-    dialog.querySelector("input").focus();
+    dialog?.showModal();
+    dialog?.querySelector("input")?.focus();
 
     return () => {
-      dialog.close();
-      previousFocus?.focus();
+      if (dialog?.open) dialog.close();
+      if (previousFocus instanceof HTMLElement) previousFocus.focus();
     };
   }, [open]);
 
+  const handleClose = () => {
+    if (loading) return;
+    setMessage({ type: "", text: "" });
+    onClose();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
     setLoading(true);
+    setMessage({ type: "", text: "" });
+    const formData = new FormData(e.currentTarget);
+    const currentPassword = formData.get("currentPassword");
+    const newPassword = formData.get("newPassword");
+
     try {
-      await apiRequest("/api/auth/change-password", {
-        method: "POST",
-        body: JSON.stringify({
-          currentPassword: form.get("currentPassword"),
-          newPassword: form.get("newPassword"),
-        }),
+      const { data } = await api.post("/auth/change-password", {
+        currentPassword,
+        newPassword,
       });
+      if (!data?.success)
+        throw new Error(data.error || "Failed to update password.");
+      formRef.current?.reset();
       toast.success("Password updated successfully.");
       onClose();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to update password.");
+      setMessage({
+        type: "error",
+        text:
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          "Failed to update password.",
+      });
     } finally {
       setLoading(false);
     }
@@ -51,27 +70,13 @@ const ChangePasswordModal = ({ open, onClose }) => {
     <dialog
       ref={dialogRef}
       aria-labelledby={titleId}
-      onCancel={(e) => {
-        e.preventDefault();
-        onClose();
+      onCancel={(event) => {
+        event.preventDefault();
+        handleClose();
       }}
-      onKeyDown={(e) => {
-        if (e.key !== "Tab") return;
-
-        const controls = e.currentTarget.querySelectorAll(
-          "button:not(:disabled), input:not(:disabled)",
-        );
-        const first = controls[0];
-        const last = controls[controls.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
+      onClick={(event) => {
+        if (event.target === event.currentTarget) handleClose();
       }}
-      onClick={onClose}
       className="fixed inset-0 m-0 h-full max-h-none w-full max-w-none bg-transparent open:flex items-center justify-center p-4 backdrop:bg-black/40 backdrop:backdrop-blur-sm"
     >
       <div
@@ -88,14 +93,19 @@ const ChangePasswordModal = ({ open, onClose }) => {
           <button
             type="button"
             aria-label="Close change password dialog"
-            onClick={onClose}
+            onClick={handleClose}
+            disabled={loading}
             className="p-2 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form className="p-6 space-y-5" onSubmit={handleSubmit}>
+        <form
+          ref={formRef}
+          className="p-6 space-y-5"
+          onSubmit={handleSubmit}
+        >
           <div>
             <label
               htmlFor={currentPasswordId}
@@ -127,10 +137,20 @@ const ChangePasswordModal = ({ open, onClose }) => {
             />
           </div>
 
+          {message.text && (
+            <p
+              role="alert"
+              className="text-sm text-rose-600"
+            >
+              {message.text}
+            </p>
+          )}
+
           <div className="flex gap-3 pt-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
+              disabled={loading}
               className="btn-secondary flex-1"
             >
               Cancel
@@ -141,7 +161,8 @@ const ChangePasswordModal = ({ open, onClose }) => {
               disabled={loading}
               className="btn-primary flex-1 flex justify-center items-center gap-2"
             >
-              Update Password
+              {loading && <Loader2Icon className="h-4 w-4 animate-spin" />}
+              {loading ? "Updating..." : "Update Password"}
             </button>
           </div>
         </form>

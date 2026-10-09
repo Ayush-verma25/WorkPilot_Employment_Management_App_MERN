@@ -2,33 +2,54 @@ import React, { useCallback, useEffect, useState } from "react";
 import Loading from "../components/Loading";
 import PayslipList from "../components/payslip/PayslipList";
 import GeneratePayslipForm from "../components/payslip/GeneratePayslipForm";
+import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
-import { apiRequest, getAuthUser } from "../lib/api";
+import api from "../api/axios";
 
 const Payslips = () => {
   const [payslips, setPayslips] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
-  const isAdmin = getAuthUser()?.role === "ADMIN";
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
 
   const fetchPayslips = useCallback(async () => {
     try {
-      const [payslipResult, employeeResult] = await Promise.all([
-        apiRequest("/api/payslips"),
-        isAdmin ? apiRequest("/api/employees") : Promise.resolve([]),
-      ]);
-      setPayslips(payslipResult.data || []);
-      setEmployees(employeeResult);
+      const res = await api.get("/payslips");
+      if (!Array.isArray(res.data?.data)) {
+        throw new Error("The server returned an invalid payslip list.");
+      }
+      setPayslips(res.data.data);
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          "Failed to load payslips.",
+      );
     } finally {
       setLoading(false);
     }
-  }, [isAdmin]);
+  }, []);
 
   useEffect(() => {
-    fetchPayslips().catch((error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to load payslips.");
-    });
+    fetchPayslips();
   }, [fetchPayslips]);
+
+  useEffect(() => {
+    if (isAdmin)
+      api
+        .get("/employees")
+        .then((res) => setEmployees(res.data.filter((e) => !e.isDeleted)))
+        .catch((error) =>
+          toast.error(
+            error.response?.data?.message ||
+              error.response?.data?.error ||
+              error.message ||
+              "Failed to load employees.",
+          ),
+        );
+  }, [isAdmin]);
 
   if (loading) return <Loading />;
 
@@ -43,12 +64,12 @@ const Payslips = () => {
               : "Your paySlip history"}
           </p>
         </div>
-        {isAdmin && 
+        {isAdmin && (
           <GeneratePayslipForm
             employees={employees}
             onSuccess={fetchPayslips}
           />
-        }
+        )}
       </div>
       <PayslipList payslips={payslips} isAdmin={isAdmin} />
     </div>

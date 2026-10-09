@@ -12,7 +12,7 @@ import Attendance from "../models/Attendance.js";
 import { inngest } from "../inngest/index.js";
 import { createEmployee, updateEmployee, deleteEmployee, getEmployees } from "../controllers/employeeController.js";
 import { getProfile, updateProfile } from "../controllers/profileController.js";
-import { clockInOut } from "../controllers/attendanceController.js";
+import { clockInOut, getAttendance } from "../controllers/attendanceController.js";
 import { getDashboard } from "../controllers/dashboardController.js";
 
 process.env.JWT_SECRET = randomBytes(32).toString("hex");
@@ -83,6 +83,25 @@ test("startup rejects missing, empty, and whitespace secrets before connecting o
     assert.match(result.stderr, /JWT_SECRET must be configured/);
     assert.doesNotMatch(result.stdout, /Server is running|MongoDB Connected/);
   }
+});
+
+test("admin seeding requires an explicit password and does not connect without it", () => {
+  const env = {
+    ...process.env,
+    ADMIN_EMAIL: "admin@example.test",
+    DOTENV_CONFIG_PATH: "/nonexistent-test-env",
+  };
+  delete env.ADMIN_PASSWORD;
+  delete env.MONGODB_URI;
+  const result = spawnSync(process.execPath, ["seed.js"], {
+    cwd: new URL("..", import.meta.url),
+    env,
+    encoding: "utf8",
+    timeout: 10000,
+  });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Missing ADMIN_PASSWORD environment variable/);
+  assert.doesNotMatch(result.stderr, /MONGODB_URI must be configured/);
 });
 
 test("creation validates the complete input before any write", async (t) => {
@@ -192,6 +211,38 @@ test("login and verification share the validated secret; persisted role revokes 
   assert.equal((await User.findById(user._id)).role, "EMPLOYEE");
 });
 
+test("login validates credentials and enforces the selected portal", async () => {
+  await fixture({ role: "EMPLOYEE" });
+
+  const missingCredentials = await call(login, { body: null });
+  assert.equal(missingCredentials.statusCode, 400);
+
+  const missingPortal = await call(login, {
+    body: { email: "test@example.test", password: "test-password" },
+  });
+  assert.equal(missingPortal.statusCode, 400);
+
+  const wrongPortalBadPassword = await call(login, {
+    body: {
+      email: "test@example.test",
+      password: "wrong-password",
+      role_type: "admin",
+    },
+  });
+  assert.equal(wrongPortalBadPassword.statusCode, 401);
+  assert.equal(wrongPortalBadPassword.body.message, "Invalid credentials.");
+
+  const wrongPortal = await call(login, {
+    body: {
+      email: "test@example.test",
+      password: "test-password",
+      role_type: "admin",
+    },
+  });
+  assert.equal(wrongPortal.statusCode, 401);
+  assert.equal(wrongPortal.body.message, "Not authorized as admin.");
+});
+
 test("deletion disables employees and admins, rejecting their existing tokens and new logins", async () => {
   for (const role of ["EMPLOYEE", "ADMIN"]) {
     const { user, employee } = await fixture({ email: `${role}@example.test`, role });
@@ -226,7 +277,7 @@ test("authentication rejects deleted users and a token alone cannot satisfy prot
   assert.equal(res.statusCode, 403);
 });
 
-test("profiles reject deactivated employees and preserve the admin fallback", async () => {
+test("profiles reject deactivated employees and support admin bio updates", async () => {
   const { user, employee } = await fixture();
   const session = { userId: user._id, email: user.email };
   assert.equal((await call(getProfile, { session })).body.firstName, employee.firstName);
@@ -236,8 +287,30 @@ test("profiles reject deactivated employees and preserve the admin fallback", as
   await Employee.updateOne({ _id: employee._id }, { isDeleted: true });
   assert.equal((await call(getProfile, { session })).statusCode, 403);
   assert.equal((await call(updateProfile, { session, body: { bio: "Blocked" } })).statusCode, 403);
-  const admin = await call(getProfile, { session: { userId: new mongoose.Types.ObjectId(), email: "admin@example.test" } });
-  assert.deepEqual(admin.body, { firstName: "Admin", lastName: "", email: "admin@example.test" });
+
+  const adminUser = await User.create({
+    email: "admin@example.test",
+    password: passwordHash,
+    role: "ADMIN",
+  });
+  const adminSession = {
+    userId: adminUser._id,
+    email: adminUser.email,
+    role: adminUser.role,
+  };
+  const admin = await call(getProfile, { session: adminSession });
+  assert.equal(admin.statusCode, 200);
+  assert.equal(String(admin.body._id), String(adminUser._id));
+  assert.equal(admin.body.bio, "");
+  assert.equal((await call(updateProfile, {
+    session: adminSession,
+    body: { bio: "Admin bio" },
+  })).statusCode, 200);
+  assert.equal((await User.findById(adminUser._id)).bio, "Admin bio");
+  assert.equal((await call(updateProfile, {
+    session: adminSession,
+    body: { bio: { invalid: true } },
+  })).statusCode, 400);
 });
 
 test("dashboard uses the authenticated session fields and counts attendance", async () => {
@@ -301,6 +374,32 @@ test("duplicate check-ins reuse an overnight open shift; only explicit check-out
   assert.equal(res.body.data.dayType, "Full Day");
   assert.equal(res.body.data.status, "LATE");
   assert.equal(await Attendance.countDocuments(), 2);
+});
+
+test("attendance history includes an open shift even when it is older than the history limit", async () => {
+  const { user, employee } = await fixture();
+  const openShift = await Attendance.create({
+    employeeId: employee._id,
+    date: new Date("2026-01-01T00:00:00.000Z"),
+    checkIn: new Date("2026-01-01T09:00:00.000Z"),
+    checkOut: null,
+  });
+
+  await Attendance.insertMany(
+    Array.from({ length: 31 }, (_, index) => ({
+      employeeId: employee._id,
+      date: new Date(Date.UTC(2026, 1, index + 1)),
+      checkIn: new Date(Date.UTC(2026, 1, index + 1, 9)),
+      checkOut: new Date(Date.UTC(2026, 1, index + 1, 17)),
+    })),
+  );
+
+  const result = await call(getAttendance, {
+    session: { userId: user._id },
+  });
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.data.length, 30);
+  assert.equal(String(result.body.openAttendance._id), String(openShift._id));
 });
 
 test("current-day closed records are reused and invalid or premature check-outs do not create records", async (t) => {

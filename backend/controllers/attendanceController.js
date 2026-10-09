@@ -133,12 +133,20 @@ export const getAttendance = async (req, res) => {
       return res.status(404).json({ message: "Employee not found." });
 
     const limit = Number(req.query.limit) || 30;
-    const history = await Attendance.find({ employeeId: employee._id })
-      .sort({ date: -1 })
-      .limit(limit);
+    const [history, openAttendance] = await Promise.all([
+      Attendance.find({ employeeId: employee._id })
+        .sort({ date: -1 })
+        .limit(limit),
+      Attendance.findOne({
+        employeeId: employee._id,
+        checkIn: { $ne: null },
+        checkOut: null,
+      }).sort({ checkIn: -1 }),
+    ]);
 
     return res.json({
       data: history,
+      openAttendance,
       employee: { isDeleted: employee.isDeleted },
     });
   } catch (error) {

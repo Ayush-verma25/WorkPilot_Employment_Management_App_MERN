@@ -1,34 +1,42 @@
 import { CalendarDays, FileText, Loader2, Send, X } from "lucide-react";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
-import { apiRequest } from "../../lib/api";
+import api from "../../api/axios";
 
 const ApplyLeaveModel = ({ open, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [minDate] = useState(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+    const todayParts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date());
+    const part = (type) => todayParts.find((item) => item.type === type).value;
+    const tomorrow = new Date(
+      `${part("year")}-${part("month")}-${part("day")}T00:00:00.000Z`,
+    );
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    return tomorrow.toISOString().slice(0, 10);
   });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const form = new FormData(e.currentTarget);
-    const values = Object.fromEntries(form.entries());
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries());
+
     try {
-      await apiRequest("/api/leave", {
-        method: "POST",
-        body: JSON.stringify(values),
-      });
+      await api.post("/leave", data);
+      onSuccess();
       onClose();
-      try {
-        await onSuccess();
-      } catch {
-        toast.error("Leave submitted, but the history could not be refreshed.");
-      }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to submit leave.");
+      toast.error(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          "Failed to submit leave request.",
+      );
     } finally {
       setLoading(false);
     }
