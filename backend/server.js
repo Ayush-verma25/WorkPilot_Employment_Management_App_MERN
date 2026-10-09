@@ -21,7 +21,6 @@ const PORT = process.env.PORT || 7000;
 app.use(cors());
 app.use(express.json());
 app.use(multer().none());
-app.use("/api/inngest", serve({ client: inngest, functions }));
 app.use("/api", async (req, res, next) => {
   try {
     await connectDB();
@@ -31,6 +30,7 @@ app.use("/api", async (req, res, next) => {
     res.status(503).json({ message: "Database unavailable." });
   }
 });
+app.use("/api/inngest", serve({ client: inngest, functions }));
 
 // Routes
 app.get("/", (req, res) => res.send("Server is up and running"));

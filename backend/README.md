@@ -38,6 +38,10 @@ environment (Production or Development) selected in the Inngest dashboard, then
 redeploy after changing environment variables. Do not use the event key as the
 signing key.
 
+The `/api/inngest` route connects to MongoDB before serving Inngest requests.
+Keep MongoDB reachable from the deployment; scheduled attendance checks query
+employee, leave, and attendance records when they run.
+
 If Inngest reports `Unauthorized response from URL`, check Vercel Function Logs
 and query the deployed `/api/inngest` URL. A Vercel protection page or a `401`
 from the Inngest handler indicates access protection or a missing/mismatched
