@@ -53,16 +53,14 @@ const PayslipList = ({ payslips, isAdmin }) => {
                     </td>
 
                     <td className="max-w-xs truncate text-slate-500">
-                      <button
-                        onClick={() =>
-                          window.open(
-                            `/print/payslips/${payslip._id || payslip.id}`,
-                          )
-                        }
+                      <a
+                        href={`/print/payslips/${payslip._id || payslip.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="inline-flex items-center px-3 text-xs font-medium rounded text-emerald-600 bg-emerald-50 hover:bg-emerald-100 transition-colors ring-1 ring-emerald-600/10"
                       >
                         <Download className="w-3 h-3 mr-1.5" /> Download
-                      </button>
+                      </a>
                     </td>
                   </tr>
                 );
