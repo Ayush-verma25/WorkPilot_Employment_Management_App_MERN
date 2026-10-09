@@ -8,37 +8,45 @@ import {
 } from "lucide-react";
 import LeaveHistory from "../components/leave/LeaveHistory";
 import ApplyLeaveModel from "../components/leave/ApplyLeaveModel";
+import { useAuth } from "../context/AuthContext";
+import api from "../api/axios";
 import toast from "react-hot-toast";
-import { apiRequest, getAuthUser } from "../lib/api";
 
 const Leave = () => {
+  const { user } = useAuth();
+
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [isDeleted, setIsDeleted] = useState(false);
-  const isAdmin = getAuthUser()?.role === "ADMIN";
+  const isAdmin = user?.role === "ADMIN";
 
   const fetchLeaves = useCallback(async () => {
     try {
-      const result = await apiRequest("/api/leave");
-      setLeaves(result.data || []);
-      setIsDeleted(Boolean(result.employee?.isDeleted));
+      const res = await api.get("/leave");
+      if (!Array.isArray(res.data?.data)) {
+        throw new Error("The server returned an invalid leave list.");
+      }
+      setLeaves(res.data.data);
+      setIsDeleted(Boolean(res.data.employee?.isDeleted));
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          "Failed to load leave history.",
+      );
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchLeaves().catch((error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to load leave history.");
-    });
+    fetchLeaves();
   }, [fetchLeaves]);
 
   const handleUpdate = async (id, status) => {
-    await apiRequest(`/api/leave/${id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
-    });
+    await api.patch(`/leave/${id}`, { status });
     await fetchLeaves();
   };
 

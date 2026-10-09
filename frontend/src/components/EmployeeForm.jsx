@@ -2,20 +2,40 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DEPARTMENTS } from "../assets/assets";
 import { Loader2Icon } from "lucide-react";
+import api from "../api/axios";
+import toast from "react-hot-toast";
 
 const EmployeeForm = ({ initialData, onSuccess, onCancel }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const isEditMode = !!initialData;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const formData = Object.fromEntries(new FormData(e.currentTarget).entries());
-      if (isEditMode && !String(formData.password || "").trim()) {
-        delete formData.password;
+      const formData = new FormData(e.currentTarget);
+      if (isEditMode) {
+        const pwd = formData.get("password");
+        if (!pwd) formData.delete("password");
       }
-      await onSuccess(formData);
+
+      const url = isEditMode ? `/employees/${initialData.id}` : "/employees";
+      const method = isEditMode ? "put" : "post";
+      await api[method](url, formData);
+      toast.success(isEditMode ? "Employee updated successfully." : "Employee created successfully.");
+      if (onSuccess) {
+        await onSuccess();
+      } else {
+        navigate("/employees");
+      }
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          "Failed to save employee.",
+      );
     } finally {
       setLoading(false);
     }
@@ -88,7 +108,8 @@ const EmployeeForm = ({ initialData, onSuccess, onCancel }) => {
             <label className="block mb-2">Department</label>
             <select
               name="department"
-              defaultValue={initialData?.department || ""}
+              required
+              defaultValue={initialData?.department || "Engineering"}
             >
               <option value="">Select Department</option>
               {DEPARTMENTS.map((deptName) => (

@@ -3,8 +3,8 @@ import Loading from "../components/Loading";
 import CheckInButton from "../components/attendance/CheckInButton";
 import AttendanceStats from "../components/attendance/AttendanceStats";
 import AttendanceHistory from "../components/attendance/AttendanceHistory";
+import api from "../api/axios";
 import toast from "react-hot-toast";
-import { apiRequest } from "../lib/api";
 
 const indiaDateKey = (date = new Date()) => {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -13,7 +13,7 @@ const indiaDateKey = (date = new Date()) => {
     month: "2-digit",
     day: "2-digit",
   }).formatToParts(date);
-  const part = (type) => parts.find((item) => item.type === type).value;
+  const part = (type) => parts.find((item) => item.type === type)?.value;
   return `${part("year")}-${part("month")}-${part("day")}`;
 };
 
@@ -21,31 +21,43 @@ const Attendance = () => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isDeleted, setIsDeleted] = useState(false);
-  const [todayKey] = useState(indiaDateKey);
+  const [openAttendance, setOpenAttendance] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const result = await apiRequest("/api/attendance");
-      setHistory(result.data || []);
-      setIsDeleted(Boolean(result.employee?.isDeleted));
+      const res = await api.get("/attendance");
+      const json = res.data;
+      if (!Array.isArray(json?.data)) {
+        throw new Error("The server returned an invalid attendance history.");
+      }
+      setHistory(json.data);
+      setOpenAttendance(json.openAttendance || null);
+      setIsDeleted(Boolean(json.employee?.isDeleted));
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          "Failed to load attendance.",
+      );
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchData().catch((error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to load attendance.");
-    });
+    fetchData();
   }, [fetchData]);
 
   if (loading) return <Loading />;
 
-  const todayRecord =
+  const todayKey = indiaDateKey();
+  const todayRecord = openAttendance ??
     history.find((record) => record.checkIn && !record.checkOut) ??
-    history.find(
-      (record) => indiaDateKey(new Date(record.date)) === todayKey,
-    );
+    history.find((record) => {
+      const date = new Date(record.date);
+      return !Number.isNaN(date.getTime()) && indiaDateKey(date) === todayKey;
+    });
 
   return (
     <div className="animate-fade-in">

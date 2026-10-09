@@ -150,10 +150,15 @@ const attendanceReminderCron = inngest.createFunction(
   async ({ step }) => {
     // Step 1: Get today's date range (IST)
     const today = await step.run("get-today-date", () => {
-      const startUTC = new Date(
-        new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }) +
-          " T00:00:00 +05:30",
-      );
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).formatToParts(new Date());
+      const part = (type) => parts.find((item) => item.type === type).value;
+      const dateKey = `${part("year")}-${part("month")}-${part("day")}`;
+      const startUTC = new Date(`${dateKey}T00:00:00+05:30`);
       const endUTC = new Date(startUTC.getTime() + 24 * 60 * 60 * 1000);
       return { startUTC: startUTC.toISOString(), endUTC: endUTC.toISOString() };
     });
@@ -163,7 +168,7 @@ const attendanceReminderCron = inngest.createFunction(
     const activeEmployees = await step.run("get-active-employees", async () => {
       const employees = await Employee.find({
         isDeleted: false,
-        employeeStatus: "ACTIVE",
+        employmentStatus: "ACTIVE",
       }).lean();
       return employees.map((e) => ({
         _id: e._id.toString(),
@@ -187,7 +192,7 @@ const attendanceReminderCron = inngest.createFunction(
     // Step 4: Get employee IDs who already checked in today
     const checkedInIds = await step.run("get-checked-in-ids", async () => {
       const attendances = await Attendance.find({
-        date: { $gte: new Date(today.startUTC), $lte: new Date(today.endUTC) },
+        date: { $gte: new Date(today.startUTC), $lt: new Date(today.endUTC) },
       }).lean();
       return attendances.map((a) => a.employeeId.toString());
     });
@@ -220,6 +225,7 @@ const attendanceReminderCron = inngest.createFunction(
           });
         });
         await Promise.all(emailPromises);
+        return { emailSent: absentEmployees.length };
       });
     }
 

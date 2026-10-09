@@ -7,15 +7,22 @@ import { JWT_SECRET } from "../config/auth.js";
 // POST /api/auth/login
 export const login = async (req, res) => {
   try {
-    const { email, password, role_type } = req.body;
+    const { email, password, role_type } = req.body ?? {};
 
-    if (!email || !password) {
+    if (
+      typeof email !== "string" ||
+      !email.trim() ||
+      typeof password !== "string" ||
+      !password
+    ) {
       return res
         .status(400)
         .json({ message: "Email and password are required." });
     }
 
-    const user = await User.findOne({ email });
+    const requestedRole =
+      typeof role_type === "string" ? role_type.toLowerCase() : "";
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
     if (!user || user.isDisabled) {
       return res.status(401).json({ message: "Invalid credentials." });
     }
@@ -25,11 +32,15 @@ export const login = async (req, res) => {
       return res.status(401).json({ message: "Invalid credentials." });
     }
 
-    if (role_type === "admin" && user.role !== "ADMIN") {
+    if (!["admin", "employee"].includes(requestedRole)) {
+      return res.status(400).json({ message: "A valid login portal is required." });
+    }
+
+    if (requestedRole === "admin" && user.role !== "ADMIN") {
       return res.status(401).json({ message: "Not authorized as admin." });
     }
 
-    if (role_type === "employee" && user.role !== "EMPLOYEE") {
+    if (requestedRole === "employee" && user.role !== "EMPLOYEE") {
       return res.status(401).json({ message: "Not authorized as employee." });
     }
 

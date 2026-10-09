@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema({
     isDisabled: {type: Boolean, default: false},
     password: {type: String, required: true},
     role: {type: String, enum: ["ADMIN", "EMPLOYEE"], default: "EMPLOYEE"},
+    bio: {type: String, default: ""},
 }, {timestamps: true});
 
 const User = mongoose.models.User || mongoose.model("User", userSchema);

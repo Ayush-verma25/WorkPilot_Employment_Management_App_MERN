@@ -3,30 +3,62 @@ import { useParams } from "react-router-dom";
 import Loading from "../components/Loading";
 import { format } from "date-fns";
 import toast from "react-hot-toast";
-import { apiRequest } from "../lib/api";
+import api from "../api/axios";
 
 const PrintPayslips = () => {
   const { id } = useParams();
   const [payslip, setPayslip] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    apiRequest(`/api/payslips/${id}`)
-      .then((result) => setPayslip({
-        ...result,
-        employee: result.employeeId,
-      }))
-      .catch((error) => {
-        toast.error(error instanceof Error ? error.message : "Failed to load payslip.");
-        setPayslip(null);
-      })
-      .finally(() => setLoading(false));
+    const controller = new AbortController();
+
+    const fetchPayslip = async () => {
+      setLoading(true);
+      setPayslip(null);
+      setLoadError("");
+
+      try {
+        const { data } = await api.get(`/payslips/${id}`, {
+          signal: controller.signal,
+        });
+        if (
+          !data ||
+          !Number.isInteger(data.month) ||
+          !Number.isInteger(data.year)
+        ) {
+          throw new Error("The server returned invalid payslip data.");
+        }
+        setPayslip({
+          ...data,
+          employee: data.employee ?? data.employeeId,
+        });
+      } catch (error) {
+        if (controller.signal.aborted) return;
+
+        const message =
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          "Failed to load payslip.";
+        setLoadError(message);
+        toast.error(message);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    };
+
+    fetchPayslip();
+    return () => controller.abort();
   }, [id]);
 
   if (loading) return <Loading />;
   if (!payslip)
     return (
-      <p className="text-center py-12 text-slate-400">Payslip not found</p>
+      <p role="alert" className="text-center py-12 text-slate-400">
+        {loadError || "Payslip not found."}
+      </p>
     );
 
   return (

@@ -1,7 +1,7 @@
 import { Loader2Icon, LogInIcon, LogOutIcon } from "lucide-react";
 import React, { useState } from "react";
 import toast from "react-hot-toast";
-import { apiRequest } from "../../lib/api";
+import api from "../../api/axios";
 
 const CheckInButton = ({ todayRecord, onAction }) => {
   const [loading, setLoading] = useState(false);
@@ -10,17 +10,23 @@ const CheckInButton = ({ todayRecord, onAction }) => {
   const handleAttendance = async () => {
     setLoading(true);
     try {
-      await apiRequest("/api/attendance", {
-        method: "POST",
-        body: JSON.stringify({ action: isCheckedIn ? "CHECK_OUT" : "CHECK_IN" }),
+      await api.post("/attendance", {
+        action: isCheckedIn ? "CHECK_OUT" : "CHECK_IN",
       });
       try {
         await onAction();
       } catch {
-        toast.error("Attendance was saved, but the history could not be refreshed.");
+        toast.error(
+          "Attendance was saved, but the history could not be refreshed.",
+        );
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Attendance update failed.");
+      toast.error(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          "Attendance update failed.",
+      );
     } finally {
       setLoading(false);
     }
@@ -29,7 +35,7 @@ const CheckInButton = ({ todayRecord, onAction }) => {
   if (todayRecord?.checkOut) {
     return (
       <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-2xl border border-slate-200">
-        <h3 className="text-lg font-bold text-slate-900">Work Day Complated</h3>
+        <h3 className="text-lg font-bold text-slate-900">Work Day Completed</h3>
         <p className="text-slate-500 text-sm mt-1">
           Great job! You have completed your work day. See you tomorrow!
         </p>
@@ -41,6 +47,7 @@ const CheckInButton = ({ todayRecord, onAction }) => {
     <div className="absolute bottom-4 right-4 flex flex-col z-1">
       <button
         onClick={handleAttendance}
+        type="button"
         disabled={loading}
         className={`w-full max-w-xs flex justify-between items-center gap-8 p-4 rounded-xl bg-linear-to-br text-white ${isCheckedIn ? "from-slate-700 to-slate-900" : "from-emerald-600 to-emerald-700"}`}
       >

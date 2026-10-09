@@ -1,41 +1,43 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { clearAuth, getAuthUser } from "../lib/api";
 import {
   CalendarIcon,
   ChevronRightIcon,
   FileTextIcon,
   IndianRupeeIcon,
   LayoutGridIcon,
+  Loader2,
   LogOutIcon,
   MenuIcon,
   SettingsIcon,
   UserIcon,
   XIcon,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import api from "../api/axios";
 
 const Sidebar = () => {
   const { pathname } = useLocation();
-  const [user] = useState(getAuthUser);
-  const userName = user?.name || user?.email || "";
-  const role = user?.role || "EMPLOYEE";
+  const [userName, setUserName] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
-  const menuButtonRef = useRef(null);
-  const wasMobileOpen = useRef(false);
+
+  const { user, loading, logout } = useAuth();
+
+  useEffect(() => {
+    api.get("/profile").then(({ data }) => {
+      if (data.firstName)
+        setUserName(`${data.firstName} ${data.lastName || ""}`.trim());
+    }).catch((error) => {
+      console.error("Failed to load sidebar profile:", error);
+    });
+  }, []);
 
   // Close mobile sidebar when route changes
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
 
-  useEffect(() => {
-    if (wasMobileOpen.current && !mobileOpen) {
-      menuButtonRef.current?.focus();
-    }
-    wasMobileOpen.current = mobileOpen;
-  }, [mobileOpen]);
-
-  const isAdmin = role === "ADMIN";
+  const role = user?.role;
 
   const navItems = [
     {
@@ -43,7 +45,7 @@ const Sidebar = () => {
       href: "/dashboard",
       icon: LayoutGridIcon,
     },
-    isAdmin
+    role === "ADMIN"
       ? {
           name: "Employees",
           href: "/employees",
@@ -72,7 +74,7 @@ const Sidebar = () => {
   ];
 
   const handleLogout = () => {
-    clearAuth();
+    logout();
     window.location.href = "/login";
   };
 
@@ -117,7 +119,7 @@ const Sidebar = () => {
                 {userName}
               </p>
               <p className="text-[11px] text-emerald-500">
-                {isAdmin ? "Administrator" : "Employee"}
+                {role === "ADMIN" ? "Administrator" : "Employee"}
               </p>
             </div>
           </div>
@@ -133,27 +135,36 @@ const Sidebar = () => {
 
       {/* Navigation list */}
       <div className="flex-1 px-3 space-y-0.5 overflow-y-auto">
-        {navItems.map((item) => {
-          const isActive = pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.name}
-              to={item.href}
-              className={`group flex items-center gap-3 px-3 py-2.5 rounded-md text-[13px] font-medium transition-all duration-150 relative ${isActive ? "bg-emerald-500/12 text-emerald-300" : "text-slate-300 hover:text-white hover:bg-white/4 "}`}
-            >
-              {isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.75 h-5 rounded-r-full bg-emerald-500" />
-              )}
-              <item.icon
-                className={`w-4.25 h-4.25 shrink-0 ${isActive ? "text-emerald-300" : "text-emerald-400 group-hover:text-emerald-300"}`}
-              />
-              <span className="flex-1">{item.name}</span>
-              {isActive && (
-                <ChevronRightIcon className="w-3.5 h-3.5 text-emerald-500/50" />
-              )}
-            </Link>
-          );
-        })}
+        {loading ? (
+          <div className="px-3 py-3 flex items-center gap-2 text-slate-500">
+            <Loader2 className="animate-spin w-4 h-4" />
+            <span className="text-sm">Loading...</span>
+          </div>
+        ) : (
+          <div>
+            {navItems.map((item) => {
+              const isActive = pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`group flex items-center gap-3 px-3 py-2.5 rounded-md text-[13px] font-medium transition-all duration-150 relative ${isActive ? "bg-emerald-500/12 text-emerald-300" : "text-slate-300 hover:text-white hover:bg-white/4 "}`}
+                >
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.75 h-5 rounded-r-full bg-emerald-500" />
+                  )}
+                  <item.icon
+                    className={`w-4.25 h-4.25 shrink-0 ${isActive ? "text-emerald-300" : "text-emerald-400 group-hover:text-emerald-300"}`}
+                  />
+                  <span className="flex-1">{item.name}</span>
+                  {isActive && (
+                    <ChevronRightIcon className="w-3.5 h-3.5 text-emerald-500/50" />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Logout */}
@@ -173,7 +184,6 @@ const Sidebar = () => {
     <>
       {/* Mobile hamburger button */}
       <button
-        ref={menuButtonRef}
         onClick={() => setMobileOpen(true)}
         aria-label="Open navigation"
         className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-emerald-950 text-white rounded-lg shadow-lg border border-emerald-700/50"
